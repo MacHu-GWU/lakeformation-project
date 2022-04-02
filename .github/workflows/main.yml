@@ -54,6 +54,8 @@ jobs:
         run: "python -m pytest tests --cov=lakeformation"
       - name: "Upload coverage to Codecov"
         if: "contains(env.USING_COVERAGE, matrix.python-version)"
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         uses: "codecov/codecov-action@v1" # https://github.com/marketplace/actions/codecov-action
         with:
           fail_ci_if_error: true
