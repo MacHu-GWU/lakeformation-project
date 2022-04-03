@@ -1,0 +1,7 @@
+boto3
+jinja2
+colorama
+python-box>=5.4.1
+attrs>=21.4.0
+attrs_mate>=1.0.2
+loggerFactory==0.0.5
