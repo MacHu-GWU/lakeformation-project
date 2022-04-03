@@ -3,13 +3,13 @@
 from lakeformation import Database, Table, Column
 
 {% for database in database_list %}
-{{ database.render_define() }}
+{{ database.render() }}
 
 {% for table in database.t.values() %}
-{{ table.render_define() }}
+{{ table.render() }}
 
 {% for column in table.c.values() %}
-{{ column.render_define() }}
+{{ column.render() }}
 {% endfor %}
 
 {% endfor %}
