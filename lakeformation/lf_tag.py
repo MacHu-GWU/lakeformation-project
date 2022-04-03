@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
 
-from typing import List, Dict, TYPE_CHECKING
-
-from .abstract import HashableAbc, RenderableAbc, SerializableAbc
+from .resource import Resource
 from .constant import DELIMITER
 from .validator import validate_attr_type
 
 
-class LfTag(HashableAbc, RenderableAbc, SerializableAbc):
+class LfTag(Resource):
     def __init__(self, key: str, value: str):
         self.key = key
         self.value = value

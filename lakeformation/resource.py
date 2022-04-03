@@ -7,7 +7,6 @@ from typing import (
 from box import Box
 
 from .abstract import HashableAbc, RenderableAbc, SerializableAbc
-from .constant import DELIMITER
 from .validator import validate_attr_type
 from .utils import to_var_name
 
