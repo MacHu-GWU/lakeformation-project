@@ -52,7 +52,7 @@
 Welcome to ``lakeformation`` Documentation
 ==============================================================================
 
-Documentation for ``lakeformation``.
+``lakeformation`` is a Data Access Control as Code (DACAC) framework powered by AWS LakeFormation
 
 
 .. _install:
