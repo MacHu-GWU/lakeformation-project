@@ -226,7 +226,7 @@ class LfTag(Resource):
 
     @property
     def id(self):
-        return f"{self.key}{DELIMITER}{self.value}"
+        return f"tag_{self.key}_{self.value}"
 
     @property
     def var_name(self):
