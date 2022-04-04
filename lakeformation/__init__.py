@@ -60,5 +60,5 @@ try:
     SuperTableGrantable: Permission = PermissionEnum.SuperTableGrantable.value
 
     from .gen_code import gen_resource, gen_principal
-except ImportError:
+except ImportError:  # pragma: no cover
     pass

@@ -20,7 +20,7 @@ from .validator import validate_attr_type
 from .utils import to_var_name
 from .constant import DELIMITER
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from .pb.playbook import Playbook
     from .pb.asso import DataLakePermission
 
@@ -267,7 +267,7 @@ class LfTag(Resource):
         self.value = value
         self.validate()
 
-        if pb is not None:
+        if pb is not None: # pragma: no cover
             pb.add_tag(self)
         self.pb = pb
 

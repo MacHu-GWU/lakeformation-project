@@ -7,6 +7,8 @@ from jinja2 import Template
 
 from .resource import Resource, Database, Table, Column
 from .principal import Principal, IamRole, IamUser, IamGroup
+from .boto_utils import list_recursively
+
 
 dir_here = Path(__file__).absolute().parent
 tpl_resource = Path(dir_here, "tpl", "resource.tpl")
@@ -21,24 +23,34 @@ def gen_resource(boto_ses, workspace_dir: str):
     region_name = boto_ses.region_name
 
     database_list: List[Database] = list()
-    db_response = glue_client.get_databases(
-        CatalogId=account_id,
-        MaxResults=1000,
-    )
-    for db_dct in db_response.get("DatabaseList", []):
+    for db_dct in list_recursively(
+        method = glue_client.get_databases,
+        default_kwargs=dict(
+            CatalogId=account_id,
+            MaxResults=1000,
+            ResourceShareType="ALL",
+        ),
+        next_token_arg_name="NextToken",
+        next_token_value_field="NextToken",
+        collection_value_field="DatabaseList"
+    ):
         database = Database(
             account_id=account_id,
             region=region_name,
             name=db_dct["Name"],
         )
 
-        tb_response = glue_client.get_tables(
-            CatalogId=account_id,
-            DatabaseName=db_dct["Name"],
-            MaxResults=1000,
-        )
-
-        for tb_dct in tb_response.get("TableList", []):
+        for tb_dct in list_recursively(
+            method = glue_client.get_tables,
+            default_kwargs=dict(
+                CatalogId=account_id,
+                DatabaseName=db_dct["Name"],
+                MaxResults=1000,
+            ),
+            next_token_arg_name="NextToken",
+            next_token_value_field="NextToken",
+            collection_value_field="TableList"
+        ):
             table = Table(
                 name=tb_dct["Name"],
                 database=database,
@@ -70,24 +82,39 @@ def gen_principal(boto_ses, workspace_dir: str):
     iam_group_list: List[IamGroup] = list()
     iam_role_list: List[IamRole] = list()
 
-    list_users_response = iam_client.list_users(
-        MaxItems=1000,
-    )
-    for user_dct in list_users_response.get("Users", []):
+    for user_dct in list_recursively(
+        method = iam_client.list_users,
+        default_kwargs=dict(
+            MaxItems=1000,
+        ),
+        next_token_arg_name="Marker",
+        next_token_value_field="Marker",
+        collection_value_field="Users"
+    ):
         iam_user = IamUser(arn=user_dct["Arn"])
         iam_user_list.append(iam_user)
 
-    list_groups_response = iam_client.list_groups(
-        MaxItems=1000,
-    )
-    for group_dct in list_groups_response.get("Groups", []):
+    for group_dct in list_recursively(
+        method = iam_client.list_groups,
+        default_kwargs=dict(
+            MaxItems=1000,
+        ),
+        next_token_arg_name="Marker",
+        next_token_value_field="Marker",
+        collection_value_field="Groups"
+    ):
         iam_group = IamGroup(arn=group_dct["Arn"])
         iam_group_list.append(iam_group)
 
-    list_roles_response = iam_client.list_roles(
-        MaxItems=1000,
-    )
-    for role_dct in list_roles_response.get("Roles", []):
+    for role_dct in list_recursively(
+        method = iam_client.list_roles,
+        default_kwargs=dict(
+            MaxItems=1000,
+        ),
+        next_token_arg_name="Marker",
+        next_token_value_field="Marker",
+        collection_value_field="Roles"
+    ):
         iam_role = IamRole(arn=role_dct["Arn"])
         iam_role_list.append(iam_role)
 

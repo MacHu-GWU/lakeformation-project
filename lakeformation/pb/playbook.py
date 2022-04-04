@@ -32,22 +32,20 @@ class Playbook:
         self.boto_ses = boto_ses
         if workspace_dir is None:
             self.workspace_dir: Path = Path.cwd()
-        else:
+        else:  # pragma: no cover
             self.workspace_dir: Path = Path(workspace_dir)
 
-        if _skip_validation is False:
+        if _skip_validation is False:  # pragma: no cover
             self.validate()
 
             self.glue_client = boto_ses.client("glue")
             self.lf_client = boto_ses.client("lakeformation")
             self.sts_client = boto_ses.client("sts")
-            self.region: str = self.boto_ses.region_name
-            self.account_id: str = self.sts_client.get_caller_identity()["Account"]
-
-            self.deployed_pb_json: Path = Path(
-                self.workspace_dir,
-                f"deployed-{self.account_id}-{self.region}.json",
-            )
+            self.account_id: Optional[str] = self.sts_client.get_caller_identity()["Account"]
+            self.region: Optional[str] = self.boto_ses.region_name
+        else:
+            self.account_id: Optional[str] = None
+            self.region: Optional[str] = None
 
         self.deployed_pb: Optional[Playbook] = None
 
@@ -55,7 +53,14 @@ class Playbook:
         self.datalake_permissions: Dict[str, DataLakePermission] = dict()
         self.lf_tag_attachments: Dict[str, LfTagAttachment] = dict()
 
-    def validate(self):
+    @property
+    def deployed_pb_json(self) -> Path:
+        return Path(
+            self.workspace_dir,
+            f"deployed-{self.account_id}-{self.region}.json",
+        )
+
+    def validate(self):  # pragma: no cover
         validate_attr_type(self, "boto_ses", self.boto_ses, boto3.session.Session)
         assert self.workspace_dir.exists()
 
@@ -63,7 +68,7 @@ class Playbook:
         local_now, utc_now = get_local_and_utc_now()
         try:
             username = Path.home().name
-        except:
+        except:  # pragma: no cover
             username = "unknown"
         data = {
             "deployed_by": username,
@@ -128,21 +133,25 @@ class Playbook:
         collection: Dict[str, Any],
         type_: Type[HashableAbc],
     ):
-        if not isinstance(obj, type_):
+        if not isinstance(obj, type_):  # pragma: no cover
             raise TypeError
-        if obj.id in collection:
+        if obj.id in collection:  # pragma: no cover
             raise ValueError
         else:
             collection[obj.id] = obj
 
     def add_tag(self, lf_tag: LfTag):
         self._add(lf_tag, self.resources, LfTag)
+        lf_tag.pb = self
 
     def add_dl_permission(self, dl_permission: DataLakePermission):
         self._add(dl_permission, self.datalake_permissions, DataLakePermission)
+        if dl_permission.resource.res_type == LfTag.res_type:
+            dl_permission.resource.pb = self
 
     def add_lf_tag_attachment(self, lf_tag_attachment: LfTagAttachment):
         self._add(lf_tag_attachment, self.lf_tag_attachments, LfTagAttachment)
+        lf_tag_attachment.tag.pb = self
 
     def grant(
         self,
