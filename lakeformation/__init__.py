@@ -19,9 +19,12 @@ try:
     from .permission import Permission, PermissionEnum
     from .resource import (
         Resource,
-        DbTbCol, Database, Table, Column
+        Database, Table, Column, LfTag
     )
-    from .lf_tag import LfTag
+    from .pb import (
+        DataLakePermission, LfTagAttachment,
+        Playbook,
+    )
 
     AlterDatabase: Permission = PermissionEnum.AlterDatabase.value
     AlterDatabaseGrantable: Permission = PermissionEnum.AlterDatabaseGrantable.value
