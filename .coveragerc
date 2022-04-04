@@ -2,12 +2,10 @@
 # for more info: https://coverage.readthedocs.io/en/latest/config.html
 [run]
 omit =
-    lakeformation/_version.py
-    lakeformation/cli.py
-    lakeformation/pkg/*
     lakeformation/docs/*
     lakeformation/tests/*
-    lakeformation/handlers/*
+    lakeformation/_version.py
+    lakeformation/runtime.py
 
 [report]
 # Regexes for lines to exclude from consideration
