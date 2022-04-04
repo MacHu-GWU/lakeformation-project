@@ -12,7 +12,7 @@ from .utils import to_var_name
 from .constant import DELIMITER
 
 if TYPE_CHECKING:
-    pass
+    from .pb.playbook import Playbook
 
 
 class Resource(HashableAbc, RenderableAbc, SerializableAbc):
@@ -215,10 +215,17 @@ class Column(NonLfTagResource):
 class LfTag(Resource):
     res_type: str = "LfTag"
 
-    def __init__(self, key: str, value: str):
+    def __init__(
+        self,
+        key: str,
+        value: str,
+        pb: 'Playbook' = None,
+    ):
         self.key = key
         self.value = value
+        self.pb = pb
         self.validate()
+
 
     def validate(self):
         validate_attr_type(self, "key", self.key, str)
