@@ -6,6 +6,7 @@ omit =
     lakeformation/tests/*
     lakeformation/_version.py
     lakeformation/runtime.py
+    lakeformation/gen_code.py
 
 [report]
 # Regexes for lines to exclude from consideration
