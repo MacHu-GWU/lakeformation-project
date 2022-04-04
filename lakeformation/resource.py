@@ -1,5 +1,14 @@
 # -*- coding: utf-8 -*-
 
+"""
+Ref:
+
+- List database: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/glue.html#Glue.Client.get_databases
+- Get database: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/glue.html#Glue.Client.get_database
+- List table: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/glue.html#Glue.Client.get_tables
+- Get table: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/glue.html#Glue.Client.get_table
+"""
+
 from typing import (
     List, Tuple, Set, Dict, Iterable, Sequence, Mapping,
     Union, Any, Optional, Type, TYPE_CHECKING
@@ -13,6 +22,7 @@ from .constant import DELIMITER
 
 if TYPE_CHECKING:
     from .pb.playbook import Playbook
+    from .pb.asso import DataLakePermission
 
 
 class Resource(HashableAbc, RenderableAbc, SerializableAbc):
@@ -23,6 +33,38 @@ class Resource(HashableAbc, RenderableAbc, SerializableAbc):
         'Database', 'Table', 'Column', 'LfTag'
     ]:
         return _resource_type_mapper[data["res_type"]].deserialize(data)
+
+    @property
+    def get_add_remove_lf_tags_arg_name(self) -> str:
+        """
+        Argument name for AWS Boto3 lakeformation client:
+
+        - add_lf_tags_to_resource
+        - remove_lf_tags_from_resource
+        - get_resource_lf_tags
+        """
+        raise NotImplementedError
+
+    @property
+    def get_add_remove_lf_tags_arg_value(self) -> dict:
+        """
+        Argument value for AWS Boto3 lakeformation client:
+
+        - add_lf_tags_to_resource
+        - remove_lf_tags_from_resource
+        - get_resource_lf_tags
+        """
+        raise NotImplementedError
+
+    @property
+    def get_batch_grant_permission_arg_name(self) -> str:
+        raise NotImplementedError
+
+    def get_batch_grant_permission_arg_value(
+        self,
+        dl_permission: 'DataLakePermission',
+    ) -> dict:
+        raise NotImplementedError
 
 
 class NonLfTagResource(Resource):
@@ -223,9 +265,11 @@ class LfTag(Resource):
     ):
         self.key = key
         self.value = value
-        self.pb = pb
         self.validate()
 
+        if pb is not None:
+            pb.add_tag(self)
+        self.pb = pb
 
     def validate(self):
         validate_attr_type(self, "key", self.key, str)
@@ -252,6 +296,25 @@ class LfTag(Resource):
     @classmethod
     def deserialize(cls, data: dict) -> 'LfTag':
         return cls(key=data["key"], value=data["value"])
+
+    @property
+    def get_batch_grant_permission_arg_name(self) -> str:
+        return "LFTagPolicy"
+
+    def get_batch_grant_permission_arg_value(
+        self,
+        dl_permission: 'DataLakePermission',
+    ) -> dict:
+        return dict(
+            CatalogId=self.pb.account_id,
+            ResourceType=dl_permission.permission.resource_type,
+            Expression=[
+                dict(
+                    TagKey=self.key,
+                    TagValues=[self.value, ],
+                ),
+            ]
+        )
 
 
 _resource_type_mapper: Dict[str, Type['Resource']] = {
