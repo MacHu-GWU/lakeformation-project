@@ -25,7 +25,11 @@ class Resource(HashableAbc, RenderableAbc, SerializableAbc):
         return _resource_type_mapper[data["res_type"]].deserialize(data)
 
 
-class Database(Resource):
+class NonLfTagResource(Resource):
+    pass
+
+
+class Database(NonLfTagResource):
     res_type: str = "Database"
 
     def __init__(
@@ -89,7 +93,7 @@ class Database(Resource):
         )
 
 
-class Table(Resource):
+class Table(NonLfTagResource):
     res_type: str = "Table"
 
     def __init__(
@@ -149,7 +153,7 @@ class Table(Resource):
         )
 
 
-class Column(Resource):
+class Column(NonLfTagResource):
     res_type: str = "Column"
 
     def __init__(

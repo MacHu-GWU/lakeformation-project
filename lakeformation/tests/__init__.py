@@ -3,6 +3,8 @@
 from typing import List, Union
 from ..principal import Iam, IamRole, IamUser, IamGroup
 from ..resource import Resource, Database, Table, Column, LfTag
+from ..permission import PermissionEnum
+from ..pb.asso import DataLakePermission, LfTagAttachment
 
 aws_account_id = "111122223333"
 aws_region = "us-east-1"
@@ -77,3 +79,20 @@ class Objects:
             self.tag_limited_n,
         ]
         self.resource_list: List[Resource] = self.db_list + self.tb_list + self.col_list + self.tag_list
+
+        # --- DataLake Permission
+        self.dl_permission_iam_user_alice_tag_admin_y = DataLakePermission(
+            principal=self.iam_user_alice,
+            resource=self.tag_admin_y,
+            permission=PermissionEnum.SuperDatabase.value,
+        )
+
+        # --- LfTagAttachment
+        self.attachment_db_amz_tag_admin_y = LfTagAttachment(
+            resource=self.db_amz,
+            tag=self.tag_admin_y,
+        )
+        self.attachment_col_amz_user_password_tag_regular_n = LfTagAttachment(
+            resource=self.col_amz_user_password,
+            tag=self.tag_regular_n,
+        )
