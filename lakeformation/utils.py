@@ -2,6 +2,7 @@
 
 from typing import List, Set, Tuple, Dict, Iterable, Any
 from datetime import datetime, timezone
+from ordered_set import OrderedSet
 
 var_name_escape = {
     "-": "_",
@@ -43,7 +44,7 @@ def get_local_and_utc_now() -> Tuple[datetime, datetime]:
 def get_diff_and_inter(
     dct1: Dict[str, Any],
     dct2: Dict[str, Any],
-) -> Tuple[Set[str], Set[str], Set[str]]:
+) -> Tuple[OrderedSet, OrderedSet, OrderedSet]:
     """
     Each deployed ``Object`` usually has a unique id. ``Mapper`` is a dictionary
     data structure that stores a collection of ``Object``. Key is the
@@ -68,8 +69,8 @@ def get_diff_and_inter(
     :param dct2:
     :return:
     """
-    s1 = set(dct1)
-    s2 = set(dct2)
+    s1 = OrderedSet(dct1)
+    s2 = OrderedSet(dct2)
     return s1.difference(s2), s2.difference(s1), s1.intersection(s2)
 
 
