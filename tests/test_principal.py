@@ -2,7 +2,7 @@
 
 import pytest
 from lakeformation.principal import (
-    validate_iam_arn, Iam, IamRole, IamUser, IamGroup,
+    validate_iam_arn, Principal, IamRole, IamUser, IamGroup,
 )
 from lakeformation.tests import Objects
 
@@ -55,7 +55,7 @@ def test_seder():
     assert IamGroup.deserialize(obj.iam_group_admin.serialize()) == obj.iam_group_admin
 
     for p in obj.principal_list:
-        assert Iam.deserialize(p.serialize()) == p
+        assert Principal.deserialize(p.serialize()) == p
 
 
 if __name__ == "__main__":

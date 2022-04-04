@@ -2,7 +2,7 @@
 
 import pytest
 from lakeformation.resource import (
-    DbTbCol, Database, Table, Column
+    Resource, Database, Table, Column, LfTag
 )
 from lakeformation.tests import Objects
 
@@ -41,7 +41,25 @@ def test_seder():
     assert Column.deserialize(obj.col_amz_user_id.serialize()) == obj.col_amz_user_id
 
     for r in obj.resource_list:
-        assert DbTbCol.deserialize(r.serialize()) == r
+        assert Resource.deserialize(r.serialize()) == r
+
+
+class TestLfTag:
+    def test_hash(self):
+        obj1 = Objects()
+        obj2 = Objects()
+        _ = set(obj.tag_list)
+
+        for tag1, tag2 in zip(obj1.tag_list, obj2.tag_list):
+            assert tag1 == tag2
+            assert tag1.id == tag2.id
+            assert hash(tag1) == hash(tag2)
+
+        assert obj1.tag_admin_y != obj1.tag_admin_n
+
+    def test_serde(self):
+        for tag in obj.tag_list:
+            assert LfTag.deserialize(tag.serialize()) == tag
 
 
 if __name__ == "__main__":

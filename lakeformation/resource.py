@@ -9,33 +9,25 @@ from box import Box
 from .abstract import HashableAbc, RenderableAbc, SerializableAbc
 from .validator import validate_attr_type
 from .utils import to_var_name
+from .constant import DELIMITER
 
 if TYPE_CHECKING:
     pass
 
 
 class Resource(HashableAbc, RenderableAbc, SerializableAbc):
-    pass
+    res_type: str = None  # Resource Type identifier
 
-
-class DbTbCol(Resource):
     @classmethod
-    def deserialize(cls, data: dict) -> Union['Database', 'Table', 'Column']:
-        if "account_id" in data:
-            return Database.deserialize(data)
-        elif "database" in data:
-            return Table.deserialize(data)
-        elif "table" in data:
-            return Column.deserialize(data)
-        else:
-            raise ValueError("it is not a 'Resource' deserializable dict!")
-
-    @property
-    def get_add_remove_lf_tags_arg_value(self) -> dict:
-        raise NotImplementedError
+    def deserialize(cls, data: dict) -> Union[
+        'Database', 'Table', 'Column', 'LfTag'
+    ]:
+        return _resource_type_mapper[data["res_type"]].deserialize(data)
 
 
 class Database(Resource):
+    res_type: str = "Database"
+
     def __init__(
         self,
         account_id: str,
@@ -71,6 +63,7 @@ class Database(Resource):
 
     def serialize(self) -> dict:
         return dict(
+            res_type=self.res_type,
             account_id=self.account_id,
             region=self.region,
             name=self.name,
@@ -97,6 +90,7 @@ class Database(Resource):
 
 
 class Table(Resource):
+    res_type: str = "Table"
 
     def __init__(
         self,
@@ -130,6 +124,7 @@ class Table(Resource):
 
     def serialize(self) -> dict:
         return dict(
+            res_type=self.res_type,
             name=self.name,
             database=self.database.serialize(),
         )
@@ -155,6 +150,8 @@ class Table(Resource):
 
 
 class Column(Resource):
+    res_type: str = "Column"
+
     def __init__(
         self,
         name: str,
@@ -185,6 +182,7 @@ class Column(Resource):
 
     def serialize(self) -> dict:
         return dict(
+            res_type=self.res_type,
             name=self.name,
             table=self.table.serialize(),
         )
@@ -208,3 +206,46 @@ class Column(Resource):
             Name=self.table.name,
             ColumnNames=[self.name, ]
         )
+
+
+class LfTag(Resource):
+    res_type: str = "LfTag"
+
+    def __init__(self, key: str, value: str):
+        self.key = key
+        self.value = value
+        self.validate()
+
+    def validate(self):
+        validate_attr_type(self, "key", self.key, str)
+        validate_attr_type(self, "value", self.value, str)
+
+    @property
+    def id(self):
+        return f"{self.key}{DELIMITER}{self.value}"
+
+    @property
+    def var_name(self):
+        return f"lf_tag_{self.key.lower()}_{self.value.lower()}"
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(key={self.key!r}, value={self.value!r})"
+
+    def serialize(self) -> dict:
+        return dict(
+            res_type=self.res_type,
+            key=self.key,
+            value=self.value,
+        )
+
+    @classmethod
+    def deserialize(cls, data: dict) -> 'LfTag':
+        return cls(key=data["key"], value=data["value"])
+
+
+_resource_type_mapper: Dict[str, Type['Resource']] = {
+    "Database": Database,
+    "Table": Table,
+    "Column": Column,
+    "LfTag": LfTag,
+}

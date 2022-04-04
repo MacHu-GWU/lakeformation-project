@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import re
-from typing import Union
+from typing import Union, Dict, Type
 
 from .abstract import HashableAbc, RenderableAbc, SerializableAbc
 from .validator import validate_attr_type
@@ -18,7 +18,13 @@ class Principal(HashableAbc, RenderableAbc, SerializableAbc):
     """
     Data Accessor Principal Model.
     """
-    pass
+    principal_type: str = None
+
+    @classmethod
+    def deserialize(cls, data: dict) -> Union[
+        'IamRole', 'IamUser', 'IamGroup'
+    ]:
+        return _principal_type_mapper[data["principal_type"]].deserialize(data)
 
 
 class Iam(Principal):
@@ -50,22 +56,11 @@ class Iam(Principal):
         return f'{self.__class__.__name__}(arn={self.arn!r})'
 
     def serialize(self):
-        return dict(arn=self.arn)
-
-    @classmethod
-    def deserialize(cls, data: dict) -> Union['IamRole', 'IamUser', 'IamGroup']:
-        arn = data.get("arn", "")
-        if ":role/" in arn:
-            return IamRole.deserialize(data)
-        elif ":user/" in arn:
-            return IamUser.deserialize(data)
-        elif ":group/" in arn:
-            return IamGroup.deserialize(data)
-        else:  # pragma: no cover
-            raise ValueError
+        return dict(principal_type=self.principal_type, arn=self.arn)
 
 
 class IamRole(Iam):
+    principal_type: str = "IamRole"
     _prefix: str = "role"
 
     @classmethod
@@ -74,6 +69,7 @@ class IamRole(Iam):
 
 
 class IamUser(Iam):
+    principal_type: str = "IamUser"
     _prefix: str = "user"
 
     @classmethod
@@ -82,6 +78,7 @@ class IamUser(Iam):
 
 
 class IamGroup(Iam):
+    principal_type: str = "IamGroup"
     _prefix: str = "group"
 
     @classmethod
@@ -95,3 +92,10 @@ class SamlPrincipal(Principal):
 
 class ExternalAccountPrincipal(Principal):
     pass
+
+
+_principal_type_mapper: Dict[str, Type['Principal']] = {
+    "IamRole": IamRole,
+    "IamUser": IamUser,
+    "IamGroup": IamGroup,
+}
