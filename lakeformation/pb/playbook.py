@@ -20,7 +20,7 @@ from ..principal import (
 from ..permission import Permission
 from ..resource import (
     Resource, NonLfTagResource, LfTag,
-    Database, Table, Column,
+    Database, Table, Column, DataLakeLocation, DataCellsFilter,
 )
 from ..validator import validate_attr_type
 from ..utils import get_local_and_utc_now, get_diff_and_inter, grouper_list
@@ -150,6 +150,14 @@ class Playbook:
     def add_tag(self, lf_tag: LfTag):
         self._add(lf_tag, self.resources, LfTag)
         lf_tag.pb = self
+
+    def add_dl_location(self, dl_loc: DataLakeLocation):
+        self._add(dl_loc, self.resources, DataLakeLocation)
+        dl_loc.pb = self
+
+    def add_data_filter(self, data_filter: DataCellsFilter):
+        self._add(data_filter, self.resources, DataCellsFilter)
+        data_filter.pb = self
 
     def add_dl_permission(self, dl_permission: DataLakePermission):
         self._add(dl_permission, self.datalake_permissions, DataLakePermission)
