@@ -2,6 +2,7 @@
 lakeformation_venv/
 lakeformation.egg-info/
 lakeformation-*/
+examples/
 tmp/
 
 
