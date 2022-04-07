@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 
-from typing import List, Set, Tuple, Dict, Iterable, Any
-from datetime import datetime, timezone
+import re
 from ordered_set import OrderedSet
+from datetime import datetime, timezone
+from typing import List, Set, Tuple, Dict, Iterable, Any
 
 var_name_escape = {
     "-": "_",
@@ -95,3 +96,17 @@ def grouper_list(iterable: Iterable, n: int) -> List[list]:
             counter = 0
     if len(chunk) > 0:
         yield chunk
+
+
+iam_arn_pattern = re.compile("^arn:aws:iam::\d{12}:(role|user|group)/.+")
+account_id_pattern = re.compile("\d{12}")
+
+
+def validate_iam_arn(arn: str):
+    if re.match(iam_arn_pattern, arn) is None:
+        raise ValueError(f"{arn!r} is not a valid IAM arn")
+
+
+def validate_account_id(account_id: str):
+    if re.match(account_id_pattern, account_id) is None:
+        raise ValueError(f"{account_id!r} is not a valid AWS Account Id")

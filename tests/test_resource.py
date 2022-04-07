@@ -23,16 +23,22 @@ def test_hash():
     assert obj1.db_amz != obj1.tb_amz_user
 
 
+def test_property():
+    assert obj.db_amz.catalog_id == obj.tb_amz_user.catalog_id
+    assert obj.db_amz.catalog_id == obj.col_amz_user_id.catalog_id
+    assert obj.db_amz.catalog_id == obj.col_amz_user_password.catalog_id
+
+
 def test_render():
     assert obj.db_amz.var_name == "db_111122223333_us_east_1_amz"
     assert obj.tb_amz_user.var_name == "tb_111122223333_us_east_1_amz_user"
     assert obj.col_amz_user_id.var_name == "col_111122223333_us_east_1_amz_user_id"
 
-    assert repr(obj.db_amz) == "Database(account_id='111122223333', region='us-east-1', name='amz')"
+    assert repr(obj.db_amz) == "Database(catalog_id='111122223333', region='us-east-1', name='amz')"
     assert repr(
-        obj.tb_amz_user) == "Table(database=Database(account_id='111122223333', region='us-east-1', name='amz'), name='user')"
+        obj.tb_amz_user) == "Table(database=Database(catalog_id='111122223333', region='us-east-1', name='amz'), name='user')"
     assert repr(
-        obj.col_amz_user_id) == "Column(table=Table(database=Database(account_id='111122223333', region='us-east-1', name='amz'), name='user'), name='id')"
+        obj.col_amz_user_id) == "Column(table=Table(database=Database(catalog_id='111122223333', region='us-east-1', name='amz'), name='user'), name='id')"
 
 
 def test_seder():

@@ -35,7 +35,7 @@ def gen_resource(boto_ses, workspace_dir: str):
         collection_value_field="DatabaseList"
     ):
         database = Database(
-            account_id=account_id,
+            catalog_id=db_dct["CatalogId"],
             region=region_name,
             name=db_dct["Name"],
         )
@@ -43,7 +43,7 @@ def gen_resource(boto_ses, workspace_dir: str):
         for tb_dct in list_recursively(
             method = glue_client.get_tables,
             default_kwargs=dict(
-                CatalogId=account_id,
+                CatalogId=db_dct["CatalogId"],
                 DatabaseName=db_dct["Name"],
                 MaxResults=1000,
             ),
@@ -82,6 +82,18 @@ def gen_principal(boto_ses, workspace_dir: str):
     iam_group_list: List[IamGroup] = list()
     iam_role_list: List[IamRole] = list()
 
+    for role_dct in list_recursively(
+        method = iam_client.list_roles,
+        default_kwargs=dict(
+            MaxItems=1000,
+        ),
+        next_token_arg_name="Marker",
+        next_token_value_field="Marker",
+        collection_value_field="Roles"
+    ):
+        iam_role = IamRole(arn=role_dct["Arn"])
+        iam_role_list.append(iam_role)
+
     for user_dct in list_recursively(
         method = iam_client.list_users,
         default_kwargs=dict(
@@ -105,18 +117,6 @@ def gen_principal(boto_ses, workspace_dir: str):
     ):
         iam_group = IamGroup(arn=group_dct["Arn"])
         iam_group_list.append(iam_group)
-
-    for role_dct in list_recursively(
-        method = iam_client.list_roles,
-        default_kwargs=dict(
-            MaxItems=1000,
-        ),
-        next_token_arg_name="Marker",
-        next_token_value_field="Marker",
-        collection_value_field="Roles"
-    ):
-        iam_role = IamRole(arn=role_dct["Arn"])
-        iam_role_list.append(iam_role)
 
     tpl = Template(source=tpl_principal.read_text(encoding="utf-8"))
     content = tpl.render(

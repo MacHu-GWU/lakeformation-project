@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 
 from typing import List, Union
-from ..principal import Iam, IamRole, IamUser, IamGroup
+from ..principal import (
+    Principal, Iam, IamRole, IamUser, IamGroup,
+    ExternalAccountPrincipal,
+)
 from ..resource import Resource, Database, Table, Column, LfTag
 from ..permission import PermissionEnum
 from ..pb.asso import DataLakePermission, LfTagAttachment
@@ -12,12 +15,18 @@ aws_region = "us-east-1"
 
 class Objects:
     def __init__(self):
+        self.aws_account_id = aws_account_id
+        self.aws_region = aws_region
+
         # --- Principal
         self.iam_role_ec2_web_app = IamRole(arn=f"arn:aws:iam::{aws_account_id}:role/ec2-web-app")
         self.iam_service_role_ecs = IamRole(
             arn=f"arn:aws:iam::{aws_account_id}:role/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS")
         self.iam_user_alice = IamUser(arn=f"arn:aws:iam::{aws_account_id}:user/alice")
         self.iam_group_admin = IamGroup(arn=f"arn:aws:iam::{aws_account_id}:group/Admin")
+
+        self.acc1 = ExternalAccountPrincipal(account_id="111111111111")
+        self.acc2 = ExternalAccountPrincipal(account_id="222222222222")
 
         self.principal_list: List[Iam] = [
             self.iam_role_ec2_web_app,
@@ -27,7 +36,7 @@ class Objects:
         ]
 
         # --- Resource
-        self.db_amz = Database(account_id="111122223333", region="us-east-1", name="amz")
+        self.db_amz = Database(catalog_id="111122223333", region="us-east-1", name="amz")
         self.tb_amz_user = Table(name="user", database=self.db_amz)
         self.col_amz_user_id = Column(name="id", table=self.tb_amz_user)
         self.col_amz_user_email = Column(name="email", table=self.tb_amz_user)
@@ -63,12 +72,12 @@ class Objects:
             self.col_amz_order_created_time,
         ]
 
-        self.tag_admin_y = LfTag(key="admin", value="y")
-        self.tag_admin_n = LfTag(key="admin", value="n")
-        self.tag_regular_y = LfTag(key="regular", value="y")
-        self.tag_regular_n = LfTag(key="regular", value="n")
-        self.tag_limited_y = LfTag(key="limited", value="y")
-        self.tag_limited_n = LfTag(key="limited", value="n")
+        self.tag_admin_y = LfTag(key="admin", value="y", catalog_id=self.aws_account_id)
+        self.tag_admin_n = LfTag(key="admin", value="n", catalog_id=self.aws_account_id)
+        self.tag_regular_y = LfTag(key="regular", value="y", catalog_id=self.aws_account_id)
+        self.tag_regular_n = LfTag(key="regular", value="n", catalog_id=self.aws_account_id)
+        self.tag_limited_y = LfTag(key="limited", value="y", catalog_id=self.aws_account_id)
+        self.tag_limited_n = LfTag(key="limited", value="n", catalog_id=self.aws_account_id)
 
         self.tag_list: List[LfTag] = [
             self.tag_admin_y,

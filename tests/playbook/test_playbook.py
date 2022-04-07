@@ -53,8 +53,8 @@ class TestPlaybook:
         _ = obj.col_amz_user_password.get_add_remove_lf_tags_arg_name
         _ = obj.col_amz_user_password.get_add_remove_lf_tags_arg_value
 
-        _ = obj.tag_admin_y.get_batch_grant_permission_arg_name
-        _ = obj.tag_admin_y.get_batch_grant_permission_arg_value(
+        _ = obj.tag_admin_y.batch_grant_remove_permission_arg_name
+        _ = obj.tag_admin_y.batch_grant_remove_permission_arg_value(
             dl_permission=list(pb.datalake_permissions.values())[0]
         )
 

@@ -55,6 +55,14 @@ Welcome to ``lakeformation`` Documentation
 ``lakeformation`` is a Data Access Control as Code (DACAC) framework powered by AWS LakeFormation
 
 
+Deployment Workflow
+------------------------------------------------------------------------------
+- 读取上一次已经部署的所有对象
+- 读取 AWS Account Region 下所有存在的 Resource, Principal
+
+
+
+
 .. _install:
 
 Install

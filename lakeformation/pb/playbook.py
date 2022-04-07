@@ -14,11 +14,17 @@ from typing import (
 
 from ..logger import logger
 from ..abstract import HashableAbc
-from ..principal import Principal
+from ..principal import (
+    Principal, IamRole, IamUser, IamGroup,
+)
 from ..permission import Permission
-from ..resource import Resource, NonLfTagResource, LfTag
+from ..resource import (
+    Resource, NonLfTagResource, LfTag,
+    Database, Table, Column,
+)
 from ..validator import validate_attr_type
 from ..utils import get_local_and_utc_now, get_diff_and_inter, grouper_list
+from ..boto_utils import list_recursively
 from .asso import DataLakePermission, LfTagAttachment
 
 
@@ -38,6 +44,7 @@ class Playbook:
         if _skip_validation is False:  # pragma: no cover
             self.validate()
 
+            self.iam_client = boto_ses.client("iam")
             self.glue_client = boto_ses.client("glue")
             self.lf_client = boto_ses.client("lakeformation")
             self.sts_client = boto_ses.client("sts")
@@ -474,8 +481,8 @@ class Playbook:
                     DataLakePrincipalIdentifier=permit.principal.id,
                 ),
                 Resource={
-                    permit.resource.get_batch_grant_permission_arg_name: \
-                        permit.resource.get_batch_grant_permission_arg_value(permit)
+                    permit.resource.batch_grant_remove_permission_arg_name: \
+                        permit.resource.batch_grant_remove_permission_arg_value(permit)
                 },
             )
             permissions = [
@@ -521,8 +528,8 @@ class Playbook:
                     DataLakePrincipalIdentifier=permit.principal.id,
                 ),
                 Resource={
-                    permit.resource.get_batch_grant_permission_arg_name: \
-                        permit.resource.get_batch_grant_permission_arg_value(permit)
+                    permit.resource.batch_grant_remove_permission_arg_name: \
+                        permit.resource.batch_grant_remove_permission_arg_value(permit)
                 },
             )
             permissions = [
@@ -583,3 +590,101 @@ class Playbook:
                 )
 
         logger.enable_verbose = True
+
+    def list_all_resource(self) -> List[Resource]: # pragma: no cover
+        res_list = list()
+        for db_dct in list_recursively(
+            method=self.glue_client.get_databases,
+            default_kwargs=dict(
+                CatalogId=self.account_id,
+                MaxResults=1000,
+                ResourceShareType="ALL",
+            ),
+            next_token_arg_name="NextToken",
+            next_token_value_field="NextToken",
+            collection_value_field="DatabaseList"
+        ):
+            db = Database(
+                catalog_id=db_dct["CatalogId"],
+                region=self.region,
+                name=db_dct["Name"],
+            )
+            res_list.append(db)
+            for tb_dct in list_recursively(
+                method=self.glue_client.get_tables,
+                default_kwargs=dict(
+                    CatalogId=db.catalog_id,
+                    DatabaseName=db.name,
+                    MaxResults=1000,
+                ),
+                next_token_arg_name="NextToken",
+                next_token_value_field="NextToken",
+                collection_value_field="TableList"
+            ):
+                tb = Table(
+                    name=tb_dct["Name"],
+                    database=db,
+                )
+                res_list.append(tb)
+
+                for col_dct in tb_dct["StorageDescriptor"].get("Columns", []):
+                    column = Column(name=col_dct["Name"], table=tb)
+                    res_list.append(column)
+
+        for lf_dct in list_recursively(
+            method=self.lf_client.list_lf_tags,
+            default_kwargs=dict(
+                CatalogId=self.account_id,
+                ResourceShareType="ALL",
+                MaxResults=1000,
+            ),
+            next_token_arg_name="NextToken",
+            next_token_value_field="NextToken",
+            collection_value_field="LFTags"
+        ):
+            for value in lf_dct.get("TagValues", list()):
+                tag = LfTag(key=lf_dct["TagKey"], value=value)
+                res_list.append(tag)
+
+        return res_list
+
+    def list_all_principal(self) -> List[Principal]: # pragma: no cover
+        principal_list = list()
+
+        for role_dct in list_recursively(
+            method=self.iam_client.list_roles,
+            default_kwargs=dict(
+                MaxItems=1000,
+            ),
+            next_token_arg_name="Marker",
+            next_token_value_field="Marker",
+            collection_value_field="Roles"
+        ):
+            iam = IamRole(arn=role_dct["Arn"])
+            principal_list.append(iam)
+
+        for user_dct in list_recursively(
+            method=self.iam_client.list_users,
+            default_kwargs=dict(
+                MaxItems=1000,
+            ),
+            next_token_arg_name="Marker",
+            next_token_value_field="Marker",
+            collection_value_field="Users"
+        ):
+            iam = IamUser(arn=user_dct["Arn"])
+            principal_list.append(iam)
+
+        for group_dct in list_recursively(
+            method=self.iam_client.list_groups,
+            default_kwargs=dict(
+                MaxItems=1000,
+            ),
+            next_token_arg_name="Marker",
+            next_token_value_field="Marker",
+            collection_value_field="Groups",
+        ):
+            iam = IamGroup(arn=group_dct["Arn"])
+            principal_list.append(iam)
+
+        return principal_list

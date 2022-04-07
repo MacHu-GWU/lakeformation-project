@@ -1,17 +1,10 @@
 # -*- coding: utf-8 -*-
 
-import re
 from typing import Union, Dict, Type
 
 from .abstract import HashableAbc, RenderableAbc, SerializableAbc
 from .validator import validate_attr_type
-
-iam_arn_pattern = re.compile("^arn:aws:iam::\d{12}:(role|user|group)/.+")
-
-
-def validate_iam_arn(arn: str):
-    if re.match(iam_arn_pattern, arn) is None:
-        raise ValueError(f"{arn!r} is not a valid IAM arn")
+from .utils import validate_account_id, validate_iam_arn
 
 
 class Principal(HashableAbc, RenderableAbc, SerializableAbc):
@@ -91,11 +84,41 @@ class SamlPrincipal(Principal):
 
 
 class ExternalAccountPrincipal(Principal):
-    pass
+    principal_type = "ExternalAccountPrincipal"
+
+    def __init__(
+        self,
+        account_id: str,
+    ):
+        self.account_id = account_id
+        self.validate()
+
+    def validate(self):
+        validate_attr_type(self, "account_id", self.account_id, str)
+        validate_account_id(self.account_id)
+
+    @property
+    def id(self):
+        return self.account_id
+
+    @property
+    def var_name(self):
+        return f"acc_{self.account_id}"
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}(account_id={self.account_id!r})'
+
+    def serialize(self):
+        return dict(principal_type=self.principal_type, account_id=self.account_id)
+
+    @classmethod
+    def deserialize(cls, data: dict) -> 'ExternalAccountPrincipal':
+        return cls(account_id=data["account_id"])
 
 
 _principal_type_mapper: Dict[str, Type['Principal']] = {
     "IamRole": IamRole,
     "IamUser": IamUser,
     "IamGroup": IamGroup,
+    "ExternalAccountPrincipal": ExternalAccountPrincipal,
 }
