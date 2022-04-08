@@ -2,9 +2,9 @@
 
 import pytest
 from lakeformation.principal import (
-    Principal,
     IamRole, IamUser, IamGroup,
     ExternalAccount,
+    deserialize_principal,
 )
 from lakeformation.tests import Objects
 
@@ -49,7 +49,12 @@ def test_seder():
     assert ExternalAccount.deserialize(obj.acc2.serialize()) == obj.acc2
 
     for p in obj.principal_list:
-        assert Principal.deserialize(p.serialize()) == p
+        assert deserialize_principal(p.serialize()) == p
+
+
+def test_playbook_managed():
+    for p in obj.iam_list:
+        assert p.playbook_managed is False
 
 
 if __name__ == "__main__":

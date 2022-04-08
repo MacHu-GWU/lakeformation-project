@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from typing import Union, Dict, Type, Optional, TYPE_CHECKING
+from typing import Union, Optional, TYPE_CHECKING
 
 from .abstract import HashableAbc, RenderableAbc, SerializableAbc, PlaybookManaged
 from .validator import validate_attr_type
@@ -12,15 +12,8 @@ if TYPE_CHECKING:  # pragma: no cover
 
 class Principal(HashableAbc, RenderableAbc, SerializableAbc, PlaybookManaged):
     """
-    Data Accessor Principal Model.
+    Principal Model.
     """
-    principal_type: str = None
-
-    @classmethod
-    def deserialize(cls, data: dict) -> Union[
-        'IamRole', 'IamUser', 'IamGroup'
-    ]:
-        return _principal_type_mapper[data["principal_type"]].deserialize(data)
 
 
 class Iam(Principal):
@@ -55,7 +48,7 @@ class Iam(Principal):
 
     def serialize(self):
         return dict(
-            principal_type=self.principal_type,
+            object_type=self.object_type,
             arn=self.arn,
             _playbook_id=self._playbook_id,
         )
@@ -69,7 +62,7 @@ class Iam(Principal):
 
 
 class IamRole(Iam):
-    principal_type: str = "IamRole"
+    object_type: str = "IamRole"
     _prefix: str = "role"
 
     @classmethod
@@ -81,7 +74,7 @@ class IamRole(Iam):
 
 
 class IamUser(Iam):
-    principal_type: str = "IamUser"
+    object_type: str = "IamUser"
     _prefix: str = "user"
 
     @classmethod
@@ -93,7 +86,7 @@ class IamUser(Iam):
 
 
 class IamGroup(Iam):
-    principal_type: str = "IamGroup"
+    object_type: str = "IamGroup"
     _prefix: str = "group"
 
     @classmethod
@@ -105,11 +98,11 @@ class IamGroup(Iam):
 
 
 class SamlPrincipal(Principal):
-    pass
+    object_type = "SamlPrincipal"
 
 
 class ExternalAccount(Principal):
-    principal_type = "ExternalAccount"
+    object_type = "ExternalAccount"
 
     def __init__(
         self,
@@ -144,7 +137,7 @@ class ExternalAccount(Principal):
 
     def serialize(self):
         return dict(
-            principal_type=self.principal_type,
+            object_type=self.object_type,
             account_id=self.account_id,
             _playbook_id=self._playbook_id,
         )
@@ -157,9 +150,18 @@ class ExternalAccount(Principal):
         )
 
 
-_principal_type_mapper: Dict[str, Type['Principal']] = {
-    "IamRole": IamRole,
-    "IamUser": IamUser,
-    "IamGroup": IamGroup,
-    "ExternalAccount": ExternalAccount,
+_principal_type_mapper = {
+    IamRole.object_type: IamRole,
+    IamUser.object_type: IamUser,
+    IamGroup.object_type: IamGroup,
+    ExternalAccount.object_type: ExternalAccount,
 }
+
+
+def deserialize_principal(data: dict) -> Union[
+    IamRole,
+    IamUser,
+    IamGroup,
+    ExternalAccount,
+]:
+    return _principal_type_mapper[data["object_type"]].deserialize(data)

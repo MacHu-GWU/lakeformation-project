@@ -26,14 +26,6 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class Resource(HashableAbc, RenderableAbc, SerializableAbc, PlaybookManaged):
-    res_type: str = None  # Resource Type identifier
-
-    @classmethod
-    def deserialize(cls, data: dict) -> Union[
-        'Database', 'Table', 'Column', 'LfTag'
-    ]:
-        return _resource_type_mapper[data["res_type"]].deserialize(data)
-
     @property
     def get_add_remove_lf_tags_arg_name(self) -> str:
         """
@@ -72,7 +64,7 @@ class NonLfTagResource(Resource):
 
 
 class Database(NonLfTagResource):
-    res_type: str = "Database"
+    object_type: str = "Database"
 
     def __init__(
         self,
@@ -112,7 +104,7 @@ class Database(NonLfTagResource):
 
     def serialize(self) -> dict:
         return dict(
-            res_type=self.res_type,
+            object_type=self.object_type,
             catalog_id=self.catalog_id,
             region=self.region,
             name=self.name,
@@ -154,7 +146,7 @@ class Database(NonLfTagResource):
 
 
 class Table(NonLfTagResource):
-    res_type: str = "Table"
+    object_type: str = "Table"
 
     def __init__(
         self,
@@ -194,7 +186,7 @@ class Table(NonLfTagResource):
 
     def serialize(self) -> dict:
         return dict(
-            res_type=self.res_type,
+            object_type=self.object_type,
             name=self.name,
             database=self.database.serialize(),
             _playbook_id=self._playbook_id,
@@ -236,7 +228,7 @@ class Table(NonLfTagResource):
 
 
 class Column(NonLfTagResource):
-    res_type: str = "Column"
+    object_type: str = "Column"
 
     def __init__(
         self,
@@ -274,7 +266,7 @@ class Column(NonLfTagResource):
 
     def serialize(self) -> dict:
         return dict(
-            res_type=self.res_type,
+            object_type=self.object_type,
             name=self.name,
             table=self.table.serialize(),
             _playbook_id=self._playbook_id,
@@ -321,7 +313,7 @@ class DataLakeLocation(NonLfTagResource):
     """
 
     """
-    res_type: str = "DataLakeLocation"
+    object_type: str = "DataLakeLocation"
 
     def __init__(
         self,
@@ -362,7 +354,7 @@ class DataLakeLocation(NonLfTagResource):
         return f"dl_loc_{self.attr_name}"
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(catalog_id={self.catalog_id!r},resource_arn={self.resource_arn!r}, role_arn={self.role_arn!r})"
+        return f"{self.__class__.__name__}(catalog_id={self.catalog_id!r}, resource_arn={self.resource_arn!r}, role_arn={self.role_arn!r})"
 
     @property
     def id(self) -> str:
@@ -370,7 +362,7 @@ class DataLakeLocation(NonLfTagResource):
 
     def serialize(self) -> dict:
         return dict(
-            res_type=self.res_type,
+            object_type=self.object_type,
             catalog_id=self.catalog_id,
             resource_arn=self.resource_arn,
             role_arn=self.role_arn,
@@ -404,7 +396,7 @@ class DataCellsFilter(NonLfTagResource):
     """
 
     """
-    res_type: str = "DataCellsFilter"
+    object_type: str = "DataCellsFilter"
 
     def __init__(
         self,
@@ -459,15 +451,14 @@ class DataCellsFilter(NonLfTagResource):
 
     def serialize(self) -> dict:
         return dict(
-            res_type=self.res_type,
+            object_type=self.object_type,
             filter_name=self.filter_name,
             catalog_id=self.catalog_id,
             database_name=self.database_name,
             table_name=self.table_name,
-            column_level_access=self.column_level_access,
+            row_filter_expression=self.row_filter_expression,
             include_columns=self.include_columns,
             exclude_columns=self.exclude_columns,
-            row_filter_expression=self.row_filter_expression,
             _playbook_id=self._playbook_id,
         )
 
@@ -478,10 +469,9 @@ class DataCellsFilter(NonLfTagResource):
             catalog_id=data["catalog_id"],
             database_name=data["database_name"],
             table_name=data["table_name"],
-            column_level_access=data["column_level_access"],
+            row_filter_expression=data["row_filter_expression"],
             include_columns=data["include_columns"],
             exclude_columns=data["exclude_columns"],
-            row_filter_expression=data["row_filter_expression"],
             _playbook_id=data["_playbook_id"],
         )
 
@@ -502,7 +492,7 @@ class DataCellsFilter(NonLfTagResource):
 
 
 class LfTag(Resource):
-    res_type: str = "LfTag"
+    object_type: str = "LfTag"
 
     def __init__(
         self,
@@ -543,7 +533,7 @@ class LfTag(Resource):
 
     def serialize(self) -> dict:
         return dict(
-            res_type=self.res_type,
+            object_type=self.object_type,
             catalog_id=self.catalog_id,
             key=self.key,
             value=self.value,
@@ -579,11 +569,22 @@ class LfTag(Resource):
         )
 
 
-_resource_type_mapper: Dict[str, Type['Resource']] = {
-    "Database": Database,
-    "Table": Table,
-    "Column": Column,
-    "DataLakeLocation": DataLakeLocation,
-    "DataCellsFilter": DataCellsFilter,
-    "LfTag": LfTag,
+_resource_type_mapper = {
+    Database.object_type: Database,
+    Table.object_type: Table,
+    Column.object_type: Column,
+    DataLakeLocation.object_type: DataLakeLocation,
+    DataCellsFilter.object_type: DataCellsFilter,
+    LfTag.object_type: LfTag,
 }
+
+
+def deserialize_resource(data: dict) -> Union[
+    Database,
+    Table,
+    Column,
+    DataLakeLocation,
+    DataCellsFilter,
+    LfTag,
+]:
+    return _resource_type_mapper[data["object_type"]].deserialize(data)

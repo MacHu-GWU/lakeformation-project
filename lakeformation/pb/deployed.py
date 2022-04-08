@@ -163,6 +163,7 @@ def list_all_data_cell_filter(
         next_token_value_field="NextToken",
         collection_value_field="DataCellsFilters"
     ):
+        pass
         # if data_filter_dct.get("ColumnNames", list()):
 
 

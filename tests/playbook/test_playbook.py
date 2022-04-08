@@ -40,7 +40,8 @@ class TestPlaybook:
             filter_name="my_filter",
             catalog_id="111122223333",
             database_name="db", table_name="tb",
-            column_level_access=DataCellsFilter.ColumnLevelAccessEnum.all,
+            row_filter_expression="name='alice'",
+            include_columns=["name",]
         )
         assert ft.playbook_managed is False
 
@@ -48,7 +49,8 @@ class TestPlaybook:
             filter_name="my_filter",
             catalog_id="111122223333",
             database_name="db", table_name="tb",
-            column_level_access=DataCellsFilter.ColumnLevelAccessEnum.all,
+            row_filter_expression="name='alice'",
+            include_columns=["name",],
             pb=pb,
         )
         assert ft.playbook_managed is True

@@ -4,7 +4,14 @@ import abc
 from typing import Optional
 
 
-class HashableAbc(abc.ABC):
+class LFObject(abc.ABC):
+    """
+    LakeFormation Object
+    """
+    object_type: str = "LFObject"
+
+
+class HashableAbc(LFObject):
     """
     Abstract class that can be hashed and support ``==`` and ``!=`` comparison.
 
@@ -26,7 +33,7 @@ class HashableAbc(abc.ABC):
         return not self.__eq__(other)
 
 
-class SerializableAbc(abc.ABC):
+class SerializableAbc(LFObject):
     """
     Abstract class can serialize to dict and deserialize from the dict
     """
@@ -41,7 +48,7 @@ class SerializableAbc(abc.ABC):
         raise NotImplementedError
 
 
-class RenderableAbc(abc.ABC):
+class RenderableAbc(LFObject):
     """
     Abstract class that will be rendered by Jinja2 template to create
     resource / principal declaration scripts to support playbook.
@@ -60,7 +67,7 @@ class RenderableAbc(abc.ABC):
         return f"{self.var_name} = {self.__repr__()}"
 
 
-class PlaybookManaged(abc.ABC):
+class PlaybookManaged(LFObject):
     """
     Abstract class that can be identified as a Playbook managed (or not) object.
     If true, then the creation / update / delete will be managed by playbook.

@@ -15,12 +15,16 @@ from typing import (
 from ..logger import logger
 from ..abstract import HashableAbc
 from ..principal import (
-    Principal, IamRole, IamUser, IamGroup, ExternalAccount
+    Principal,
+    IamRole, IamUser, IamGroup, ExternalAccount,
+    deserialize_principal,
 )
 from ..permission import Permission
 from ..resource import (
-    Resource, NonLfTagResource, LfTag,
-    Database, Table, Column, DataLakeLocation, DataCellsFilter,
+    Resource, NonLfTagResource,
+    Database, Table, Column,
+    DataLakeLocation, DataCellsFilter, LfTag,
+    deserialize_resource,
 )
 from ..validator import validate_attr_type
 from ..utils import get_local_and_utc_now, get_diff_and_inter, grouper_list
@@ -162,16 +166,16 @@ class Playbook:
         #             res.pb = pb
 
         for id_, resource_dct in data.get("resources", dict()).items():
-            pb.resources[id_] = Resource.deserialize(resource_dct)
+            pb.resources[id_] = deserialize_resource(resource_dct)
             for res in pb.resources.values():
-                if res.res_type == LfTag.res_type:
+                if res.object_type == LfTag.object_type:
                     res.pb = pb
 
         for id_, dl_permission_dct in data.get("datalake_permissions", dict()).items():
             pb.datalake_permissions[id_] = DataLakePermission.deserialize(dl_permission_dct)
             for dl_permission in pb.datalake_permissions.values():
                 res = dl_permission.resource
-                if res.res_type == LfTag.res_type:
+                if res.object_type == LfTag.object_type:
                     res.pb = pb
 
         for id_, lf_tag_attachment_dct in data.get("lf_tag_attachments", dict()).items():
@@ -211,7 +215,7 @@ class Playbook:
 
     def add_dl_permission(self, dl_permission: DataLakePermission):
         self._add(dl_permission, self.datalake_permissions, DataLakePermission)
-        if dl_permission.resource.res_type == LfTag.res_type:
+        if dl_permission.resource.object_type == LfTag.object_type:
             dl_permission.resource.pb = self
 
     def add_lf_tag_attachment(self, lf_tag_attachment: LfTagAttachment):
@@ -266,7 +270,7 @@ class Playbook:
         return {
             res: res
             for res_id, res in self.resources.items()
-            if res.res_type == LfTag.res_type
+            if res.object_type == LfTag.object_type
         }
 
     @property

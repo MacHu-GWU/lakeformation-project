@@ -2,7 +2,10 @@
 
 import pytest
 from lakeformation.resource import (
-    Resource, Database, Table, Column, DataLakeLocation, DataCellsFilter, LfTag
+    Resource,
+    Database, Table, Column,
+    DataLakeLocation, DataCellsFilter, LfTag,
+    deserialize_resource,
 )
 from lakeformation.permission import PermissionEnum
 from lakeformation.pb.playbook import Playbook
@@ -50,7 +53,7 @@ def test_seder():
     assert Column.deserialize(obj.col_amz_user_id.serialize()) == obj.col_amz_user_id
 
     for r in obj.resource_list:
-        assert Resource.deserialize(r.serialize()) == r
+        assert deserialize_resource(r.serialize()) == r
 
 
 class TestResource:
@@ -98,69 +101,32 @@ class TestDataCellFilter:
     def test_init(self):
         _ = DataCellsFilter(
             filter_name="", catalog_id="", database_name="", table_name="",
-            column_level_access=DataCellsFilter.ColumnLevelAccessEnum.all,
             row_filter_expression="has_pii = false",
+            include_columns=["has_pii", ]
         )
         _ = DataCellsFilter(
             filter_name="", catalog_id="", database_name="", table_name="",
-            column_level_access=DataCellsFilter.ColumnLevelAccessEnum.include,
-            include_columns=["a"],
-        )
-        _ = DataCellsFilter(
-            filter_name="", catalog_id="", database_name="", table_name="",
-            column_level_access=DataCellsFilter.ColumnLevelAccessEnum.exclude,
-            exclude_columns=["a"],
+            row_filter_expression="has_pii = false",
+            exclude_columns=["has_pii", ]
         )
 
-        with pytest.raises(ValueError):
+        with pytest.raises(Exception):
             _ = DataCellsFilter(
                 filter_name="", catalog_id="", database_name="", table_name="",
-                column_level_access=DataCellsFilter.ColumnLevelAccessEnum.all,
+            )
+
+        with pytest.raises(Exception):
+            _ = DataCellsFilter(
+                filter_name="", catalog_id="", database_name="", table_name="",
+                row_filter_expression="has_pii = false",
+            )
+
+        with pytest.raises(Exception):
+            _ = DataCellsFilter(
+                filter_name="", catalog_id="", database_name="", table_name="",
+                row_filter_expression="has_pii = false",
                 include_columns=["a", ],
-                row_filter_expression="has_pii = false",
-            )
-        with pytest.raises(ValueError):
-            _ = DataCellsFilter(
-                filter_name="", catalog_id="", database_name="", table_name="",
-                column_level_access=DataCellsFilter.ColumnLevelAccessEnum.all,
-                exclude_columns=["a", ],
-                row_filter_expression="has_pii = false",
-            )
-
-        with pytest.raises(ValueError):
-            _ = DataCellsFilter(
-                filter_name="", catalog_id="", database_name="", table_name="",
-                column_level_access=DataCellsFilter.ColumnLevelAccessEnum.include,
-                include_columns=None,
-                row_filter_expression="has_pii = false",
-            )
-        with pytest.raises(ValueError):
-            _ = DataCellsFilter(
-                filter_name="", catalog_id="", database_name="", table_name="",
-                column_level_access=DataCellsFilter.ColumnLevelAccessEnum.include,
-                exclude_columns=["a", ],
-                row_filter_expression="has_pii = false",
-            )
-
-        with pytest.raises(ValueError):
-            _ = DataCellsFilter(
-                filter_name="", catalog_id="", database_name="", table_name="",
-                column_level_access=DataCellsFilter.ColumnLevelAccessEnum.exclude,
-                exclude_columns=None,
-                row_filter_expression="has_pii = false",
-            )
-        with pytest.raises(ValueError):
-            _ = DataCellsFilter(
-                filter_name="", catalog_id="", database_name="", table_name="",
-                column_level_access=DataCellsFilter.ColumnLevelAccessEnum.exclude,
-                include_columns=["a", ],
-                row_filter_expression="has_pii = false",
-            )
-
-        with pytest.raises(ValueError):
-            _ = DataCellsFilter(
-                filter_name="", catalog_id="", database_name="", table_name="",
-                column_level_access="invalid",
+                exclude_columns=["b", ],
             )
 
 

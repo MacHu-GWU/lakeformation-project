@@ -5,14 +5,16 @@ Association Class
 """
 
 from ..abstract import HashableAbc, SerializableAbc
-from ..resource import Resource, NonLfTagResource, Database, Table, Column, LfTag
-from ..principal import Principal
+from ..principal import Principal, deserialize_principal
+from ..resource import Resource, NonLfTagResource, LfTag, deserialize_resource
 from ..permission import Permission
 from ..constant import DELIMITER
 from ..validator import validate_attr_type
 
 
 class DataLakePermission(HashableAbc, SerializableAbc):
+    object_type = "DataLakePermission"
+
     def __init__(
         self,
         principal: Principal,
@@ -45,13 +47,15 @@ class DataLakePermission(HashableAbc, SerializableAbc):
     @classmethod
     def deserialize(cls, data: dict) -> 'DataLakePermission':
         return cls(
-            principal=Principal.deserialize(data["principal"]),
-            resource=Resource.deserialize(data["resource"]),
+            principal=deserialize_principal(data["principal"]),
+            resource=deserialize_resource(data["resource"]),
             permission=Permission.deserialize(data["permission"]),
         )
 
 
 class LfTagAttachment(HashableAbc, SerializableAbc):
+    object_type = "LfTagAttachment"
+
     def __init__(
         self,
         resource: NonLfTagResource,
@@ -80,6 +84,6 @@ class LfTagAttachment(HashableAbc, SerializableAbc):
     @classmethod
     def deserialize(cls, data: dict) -> 'LfTagAttachment':
         return cls(
-            resource=Resource.deserialize(data["resource"]),
+            resource=deserialize_resource(data["resource"]),
             tag=LfTag.deserialize(data["tag"]),
         )

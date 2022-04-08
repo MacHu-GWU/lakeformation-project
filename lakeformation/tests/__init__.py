@@ -112,7 +112,7 @@ class Objects:
             catalog_id=self.aws_account_id,
             database_name=self.db_amz.name,
             table_name=self.tb_amz_user.name,
-            column_level_access=DataCellsFilter.ColumnLevelAccessEnum.exclude,
+            row_filter_expression="name='alice'",
             exclude_columns=[self.col_amz_user_password.name, ]
         )
 
@@ -173,7 +173,8 @@ class AWS:
             catalog_id=self.aws_account_id,
             database_name=self.db.name,
             table_name=self.tb.name,
-            column_level_access=DataCellsFilter.ColumnLevelAccessEnum.all,
+            row_filter_expression="name='alice'",
+            include_columns=["name",]
         )
 
         self.tag = LfTag(catalog_id=self.aws_account_id, key="lf-unittest", value="y")
