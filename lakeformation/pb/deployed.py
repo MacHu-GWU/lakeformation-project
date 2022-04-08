@@ -149,6 +149,34 @@ def list_all_datalake_location(
         dl_loc_list.append(dl_loc)
     return dl_loc_list
 
+
+def list_all_data_cell_filter(
+    lf_client,
+) -> List[DataCellsFilter]:
+    data_filter_list = list()
+    for data_filter_dct in list_recursively(
+        method=lf_client.list_data_cells_filter,
+        default_kwargs=dict(
+            MaxResults=1000,
+        ),
+        next_token_arg_name="NextToken",
+        next_token_value_field="NextToken",
+        collection_value_field="DataCellsFilters"
+    ):
+        # if data_filter_dct.get("ColumnNames", list()):
+
+
+        # data_filter = DataCellsFilter(
+        #     filter_name=data_filter_dct["Name"],
+        #     catalog_id=data_filter_dct["TableCatalogId"],
+        #     database_name=data_filter_dct["DatabaseName"],
+        #     table_name=data_filter_dct["TableName"],
+        #     row_filter_expression=data_filter_dct["RowFilter"]["FilterExpression"],
+        # )
+        # data_filter_list.append(data_filter)
+    return data_filter_list
+
+
     # for lf_dct in list_recursively(
     #     method=lf_client.list_lf_tags,
     #     default_kwargs=dict(

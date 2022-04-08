@@ -406,21 +406,15 @@ class DataCellsFilter(NonLfTagResource):
     """
     res_type: str = "DataCellsFilter"
 
-    class ColumnLevelAccessEnum:
-        all = "all"
-        include = "include"
-        exclude = "exclude"
-
     def __init__(
         self,
         filter_name: str,
         catalog_id: str,
         database_name: str,
         table_name: str,
-        column_level_access: str,
+        row_filter_expression: str,
         include_columns: List[str] = None,
         exclude_columns: List[str] = None,
-        row_filter_expression: str = None,
         pb: 'Playbook' = None,
         _playbook_id: Optional[str] = None,
     ):
@@ -428,10 +422,9 @@ class DataCellsFilter(NonLfTagResource):
         self.catalog_id = catalog_id
         self.database_name = database_name
         self.table_name = table_name
-        self.column_level_access = column_level_access
+        self.row_filter_expression = row_filter_expression
         self.include_columns = include_columns
         self.exclude_columns = exclude_columns
-        self.row_filter_expression = row_filter_expression
         if pb is None:
             self._playbook_id = None
         else:
@@ -446,22 +439,7 @@ class DataCellsFilter(NonLfTagResource):
         validate_attr_type(self, "database_name", self.database_name, str)
         validate_attr_type(self, "table_name", self.table_name, str)
 
-        if self.column_level_access == self.ColumnLevelAccessEnum.all:
-            if self.include_columns is not None:
-                raise ValueError
-            if self.exclude_columns is not None:
-                raise ValueError
-        elif self.column_level_access == self.ColumnLevelAccessEnum.include:
-            if not isinstance(self.include_columns, list):
-                raise ValueError
-            if self.exclude_columns is not None:
-                raise ValueError
-        elif self.column_level_access == self.ColumnLevelAccessEnum.exclude:
-            if self.include_columns is not None:
-                raise ValueError
-            if not isinstance(self.exclude_columns, list):
-                raise ValueError
-        else:
+        if (bool(self.include_columns) + bool(self.exclude_columns)) != 1:
             raise ValueError
 
     @property
@@ -473,7 +451,7 @@ class DataCellsFilter(NonLfTagResource):
         return f"filter_{self.attr_name}"
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(filter_name={self.filter_name!r}, catalog_id={self.catalog_id!r}, database_name={self.database_name!r}, table_name={self.table_name!r}, column_level_access={self.column_level_access!r}, include_columns={self.include_columns!r}, exclude_columns={self.exclude_columns!r}, row_filter_expression={self.row_filter_expression!r})"
+        return f"{self.__class__.__name__}(filter_name={self.filter_name!r}, catalog_id={self.catalog_id!r}, database_name={self.database_name!r}, table_name={self.table_name!r}, row_filter_expression={self.row_filter_expression!r}, include_columns={self.include_columns!r}, exclude_columns={self.exclude_columns!r})"
 
     @property
     def id(self) -> str:
