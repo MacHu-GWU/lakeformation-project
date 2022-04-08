@@ -15,7 +15,7 @@ from typing import (
 from ..logger import logger
 from ..abstract import HashableAbc
 from ..principal import (
-    Principal, IamRole, IamUser, IamGroup,
+    Principal, IamRole, IamUser, IamGroup, ExternalAccount
 )
 from ..permission import Permission
 from ..resource import (
@@ -29,47 +29,79 @@ from .asso import DataLakePermission, LfTagAttachment
 
 
 class Playbook:
+    """
+
+
+    [CN]
+
+    Playbook 是一个用于管理 LakeFormation Object 的抽象类. 也可以理解为一个数据容器.
+
+    每一个 Playbook 只能负责一个 AWS Account 的一个 Region.
+
+    :param _skip_validation: internal parameter for testing. If true,
+        skip validation for boto session and workspace directory.
+    """
+
     def __init__(
         self,
         boto_ses: boto3.session.Session = None,
-        workspace_dir: str = None,
+        workspace_dir: Optional[Union[Path, str]] = None,
         _skip_validation: bool = False
     ):
         self.boto_ses = boto_ses
+        # use current working directory as workspace dir if not specified
         if workspace_dir is None:
             self.workspace_dir: Path = Path.cwd()
-        else:  # pragma: no cover
+        else:
             self.workspace_dir: Path = Path(workspace_dir)
 
-        if _skip_validation is False:  # pragma: no cover
-            self.validate()
+        self.iam_client = None
+        self.glue_client = None
+        self.lf_client = None
+        self.sts_client = None
 
-            self.iam_client = boto_ses.client("iam")
-            self.glue_client = boto_ses.client("glue")
-            self.lf_client = boto_ses.client("lakeformation")
-            self.sts_client = boto_ses.client("sts")
-            self.account_id: Optional[str] = self.sts_client.get_caller_identity()["Account"]
-            self.region: Optional[str] = self.boto_ses.region_name
-        else:
-            self.account_id: Optional[str] = None
-            self.region: Optional[str] = None
+        self.account_id: Optional[str] = None
+        self.region: Optional[str] = None
+        self.playbook_id: Optional[str] = "void_playbook_id"
 
         self.deployed_pb: Optional[Playbook] = None
 
+        self.principals: Dict[str, Principal] = dict()
         self.resources: Dict[str, Resource] = dict()
         self.datalake_permissions: Dict[str, DataLakePermission] = dict()
         self.lf_tag_attachments: Dict[str, LfTagAttachment] = dict()
 
+        if _skip_validation is not True:
+            self.validate()
+
+    def validate(self):  # pragma: no cover
+        """
+        Validate playbook arguments.
+        """
+        validate_attr_type(self, "boto_ses", self.boto_ses, boto3.session.Session)
+        # workspace directory has to exists
+        assert self.workspace_dir.exists()
+
+        # create boto client
+        self.iam_client = self.boto_ses.client("iam")
+        self.glue_client = self.boto_ses.client("glue")
+        self.lf_client = self.boto_ses.client("lakeformation")
+        self.sts_client = self.boto_ses.client("sts")
+
+        # get aws account id and aws region
+        self.account_id: Optional[str] = self.sts_client.get_caller_identity()["Account"]
+        self.region: Optional[str] = self.boto_ses.region_name
+        self.playbook_id = f"{self.account_id}_{self.region}"
+
     @property
     def deployed_pb_json(self) -> Path:
+        """
+        Return the path of the deployed playbook json file.
+        """
         return Path(
             self.workspace_dir,
             f"deployed-{self.account_id}-{self.region}.json",
         )
-
-    def validate(self):  # pragma: no cover
-        validate_attr_type(self, "boto_ses", self.boto_ses, boto3.session.Session)
-        assert self.workspace_dir.exists()
 
     def serialize(self) -> dict:
         local_now, utc_now = get_local_and_utc_now()
@@ -77,12 +109,18 @@ class Playbook:
             username = Path.home().name
         except:  # pragma: no cover
             username = "unknown"
+
         data = {
             "deployed_by": username,
             "deployed_at_local_time": local_now.isoformat(),
             "deployed_at_utc_time": utc_now.isoformat(),
             "account_id": self.account_id,
             "region": self.region,
+            "playbook_id": self.playbook_id,
+            "principals": {
+                id_: principal.serialize()
+                for id_, principal in self.principals.items()
+            },
             "resources": {
                 id_: res.serialize()
                 for id_, res in self.resources.items()
@@ -114,6 +152,15 @@ class Playbook:
         pb.account_id = data.get("account_id")
         pb.region = data.get("region")
 
+        # for id_, principal_dct in data.get("principals", dict()).items():
+        #     principal = Principal.deserialize(principal_dct)
+        #     if principal_dct.get("_playbook_managed", False):
+        #         principal.pb = pb
+        #     pb.resources[id_] =
+        #     for res in pb.resources.values():
+        #         if res.res_type == LfTag.res_type:
+        #             res.pb = pb
+
         for id_, resource_dct in data.get("resources", dict()).items():
             pb.resources[id_] = Resource.deserialize(resource_dct)
             for res in pb.resources.values():
@@ -143,9 +190,12 @@ class Playbook:
         if not isinstance(obj, type_):  # pragma: no cover
             raise TypeError
         if obj.id in collection:  # pragma: no cover
-            raise ValueError
+            raise ValueError(f"{obj!r} already exists in this playbook!")
         else:
             collection[obj.id] = obj
+
+    def add_external_account(self, external_account: ExternalAccount):
+        self._add(external_account, self.principals, ExternalAccount)
 
     def add_tag(self, lf_tag: LfTag):
         self._add(lf_tag, self.resources, LfTag)
@@ -598,101 +648,3 @@ class Playbook:
                 )
 
         logger.enable_verbose = True
-
-    def list_all_resource(self) -> List[Resource]: # pragma: no cover
-        res_list = list()
-        for db_dct in list_recursively(
-            method=self.glue_client.get_databases,
-            default_kwargs=dict(
-                CatalogId=self.account_id,
-                MaxResults=1000,
-                ResourceShareType="ALL",
-            ),
-            next_token_arg_name="NextToken",
-            next_token_value_field="NextToken",
-            collection_value_field="DatabaseList"
-        ):
-            db = Database(
-                catalog_id=db_dct["CatalogId"],
-                region=self.region,
-                name=db_dct["Name"],
-            )
-            res_list.append(db)
-            for tb_dct in list_recursively(
-                method=self.glue_client.get_tables,
-                default_kwargs=dict(
-                    CatalogId=db.catalog_id,
-                    DatabaseName=db.name,
-                    MaxResults=1000,
-                ),
-                next_token_arg_name="NextToken",
-                next_token_value_field="NextToken",
-                collection_value_field="TableList"
-            ):
-                tb = Table(
-                    name=tb_dct["Name"],
-                    database=db,
-                )
-                res_list.append(tb)
-
-                for col_dct in tb_dct["StorageDescriptor"].get("Columns", []):
-                    column = Column(name=col_dct["Name"], table=tb)
-                    res_list.append(column)
-
-        for lf_dct in list_recursively(
-            method=self.lf_client.list_lf_tags,
-            default_kwargs=dict(
-                CatalogId=self.account_id,
-                ResourceShareType="ALL",
-                MaxResults=1000,
-            ),
-            next_token_arg_name="NextToken",
-            next_token_value_field="NextToken",
-            collection_value_field="LFTags"
-        ):
-            for value in lf_dct.get("TagValues", list()):
-                tag = LfTag(key=lf_dct["TagKey"], value=value)
-                res_list.append(tag)
-
-        return res_list
-
-    def list_all_principal(self) -> List[Principal]: # pragma: no cover
-        principal_list = list()
-
-        for role_dct in list_recursively(
-            method=self.iam_client.list_roles,
-            default_kwargs=dict(
-                MaxItems=1000,
-            ),
-            next_token_arg_name="Marker",
-            next_token_value_field="Marker",
-            collection_value_field="Roles"
-        ):
-            iam = IamRole(arn=role_dct["Arn"])
-            principal_list.append(iam)
-
-        for user_dct in list_recursively(
-            method=self.iam_client.list_users,
-            default_kwargs=dict(
-                MaxItems=1000,
-            ),
-            next_token_arg_name="Marker",
-            next_token_value_field="Marker",
-            collection_value_field="Users"
-        ):
-            iam = IamUser(arn=user_dct["Arn"])
-            principal_list.append(iam)
-
-        for group_dct in list_recursively(
-            method=self.iam_client.list_groups,
-            default_kwargs=dict(
-                MaxItems=1000,
-            ),
-            next_token_arg_name="Marker",
-            next_token_value_field="Marker",
-            collection_value_field="Groups",
-        ):
-            iam = IamGroup(arn=group_dct["Arn"])
-            principal_list.append(iam)
-
-        return principal_list

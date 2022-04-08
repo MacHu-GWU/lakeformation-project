@@ -2,8 +2,11 @@
 
 import pytest
 from lakeformation.resource import (
-    Resource, Database, Table, Column, LfTag
+    Resource, Database, Table, Column, DataLakeLocation, DataCellsFilter, LfTag
 )
+from lakeformation.permission import PermissionEnum
+from lakeformation.pb.playbook import Playbook
+from lakeformation.pb.asso import DataLakePermission
 from lakeformation.tests import Objects
 
 obj = Objects()
@@ -48,6 +51,117 @@ def test_seder():
 
     for r in obj.resource_list:
         assert Resource.deserialize(r.serialize()) == r
+
+
+class TestResource:
+    def test_get_add_remove_lf_tags_arg(self):
+        """
+        Verify those methods are implemented
+        """
+        _ = obj.db_amz.get_add_remove_lf_tags_arg_name
+        _ = obj.db_amz.get_add_remove_lf_tags_arg_value
+        _ = obj.tb_amz_user.get_add_remove_lf_tags_arg_name
+        _ = obj.tb_amz_user.get_add_remove_lf_tags_arg_value
+        _ = obj.col_amz_user_id.get_add_remove_lf_tags_arg_name
+        _ = obj.col_amz_user_id.get_add_remove_lf_tags_arg_value
+
+    def test_batch_grant_remove_permission_arg(self):
+        _ = obj.db_amz.batch_grant_remove_permission_arg_name
+        _ = obj.db_amz.batch_grant_remove_permission_arg_value()
+        _ = obj.tb_amz_user.batch_grant_remove_permission_arg_name
+        _ = obj.tb_amz_user.batch_grant_remove_permission_arg_value()
+        _ = obj.col_amz_user_id.batch_grant_remove_permission_arg_name
+        _ = obj.col_amz_user_id.batch_grant_remove_permission_arg_value()
+
+        _ = obj.tag_admin_y.batch_grant_remove_permission_arg_name
+        _ = obj.tag_admin_y.batch_grant_remove_permission_arg_value(obj.dl_permission_iam_user_alice_tag_admin_y)
+        _ = obj.dl_loc.batch_grant_remove_permission_arg_name
+        _ = obj.dl_loc.batch_grant_remove_permission_arg_value()
+        _ = obj.data_filter.batch_grant_remove_permission_arg_name
+        _ = obj.data_filter.batch_grant_remove_permission_arg_value()
+
+
+class TestDataLakeLocation:
+    def test_init(self):
+        _ = DataLakeLocation(
+            catalog_id=obj.aws_account_id,
+            resource_arn=obj.dl_loc.resource_arn,
+        )
+        _ = DataLakeLocation(
+            catalog_id=obj.aws_account_id,
+            resource_arn=obj.dl_loc.resource_arn,
+            role_arn=obj.iam_role_ec2_web_app.arn,
+        )
+
+
+class TestDataCellFilter:
+    def test_init(self):
+        _ = DataCellsFilter(
+            filter_name="", catalog_id="", database_name="", table_name="",
+            column_level_access=DataCellsFilter.ColumnLevelAccessEnum.all,
+            row_filter_expression="has_pii = false",
+        )
+        _ = DataCellsFilter(
+            filter_name="", catalog_id="", database_name="", table_name="",
+            column_level_access=DataCellsFilter.ColumnLevelAccessEnum.include,
+            include_columns=["a"],
+        )
+        _ = DataCellsFilter(
+            filter_name="", catalog_id="", database_name="", table_name="",
+            column_level_access=DataCellsFilter.ColumnLevelAccessEnum.exclude,
+            exclude_columns=["a"],
+        )
+
+        with pytest.raises(ValueError):
+            _ = DataCellsFilter(
+                filter_name="", catalog_id="", database_name="", table_name="",
+                column_level_access=DataCellsFilter.ColumnLevelAccessEnum.all,
+                include_columns=["a", ],
+                row_filter_expression="has_pii = false",
+            )
+        with pytest.raises(ValueError):
+            _ = DataCellsFilter(
+                filter_name="", catalog_id="", database_name="", table_name="",
+                column_level_access=DataCellsFilter.ColumnLevelAccessEnum.all,
+                exclude_columns=["a", ],
+                row_filter_expression="has_pii = false",
+            )
+
+        with pytest.raises(ValueError):
+            _ = DataCellsFilter(
+                filter_name="", catalog_id="", database_name="", table_name="",
+                column_level_access=DataCellsFilter.ColumnLevelAccessEnum.include,
+                include_columns=None,
+                row_filter_expression="has_pii = false",
+            )
+        with pytest.raises(ValueError):
+            _ = DataCellsFilter(
+                filter_name="", catalog_id="", database_name="", table_name="",
+                column_level_access=DataCellsFilter.ColumnLevelAccessEnum.include,
+                exclude_columns=["a", ],
+                row_filter_expression="has_pii = false",
+            )
+
+        with pytest.raises(ValueError):
+            _ = DataCellsFilter(
+                filter_name="", catalog_id="", database_name="", table_name="",
+                column_level_access=DataCellsFilter.ColumnLevelAccessEnum.exclude,
+                exclude_columns=None,
+                row_filter_expression="has_pii = false",
+            )
+        with pytest.raises(ValueError):
+            _ = DataCellsFilter(
+                filter_name="", catalog_id="", database_name="", table_name="",
+                column_level_access=DataCellsFilter.ColumnLevelAccessEnum.exclude,
+                include_columns=["a", ],
+                row_filter_expression="has_pii = false",
+            )
+
+        with pytest.raises(ValueError):
+            _ = DataCellsFilter(
+                filter_name="", catalog_id="", database_name="", table_name="",
+                column_level_access="invalid",
+            )
 
 
 class TestLfTag:

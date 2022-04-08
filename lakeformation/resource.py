@@ -15,7 +15,7 @@ from typing import (
 )
 from box import Box
 
-from .abstract import HashableAbc, RenderableAbc, SerializableAbc
+from .abstract import HashableAbc, RenderableAbc, SerializableAbc, PlaybookManaged
 from .validator import validate_attr_type
 from .utils import to_var_name, validate_account_id, validate_iam_arn
 from .constant import DELIMITER
@@ -25,7 +25,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from .pb.asso import DataLakePermission
 
 
-class Resource(HashableAbc, RenderableAbc, SerializableAbc):
+class Resource(HashableAbc, RenderableAbc, SerializableAbc, PlaybookManaged):
     res_type: str = None  # Resource Type identifier
 
     @classmethod
@@ -79,10 +79,12 @@ class Database(NonLfTagResource):
         catalog_id: str,
         region: str,
         name: str,
+        _playbook_id: Optional[str] = None,
     ):
         self.catalog_id = catalog_id
         self.region = region
         self.name = name
+        self._playbook_id = _playbook_id
         self.validate()
 
         self.t: Dict[str, Table] = Box()
@@ -114,6 +116,7 @@ class Database(NonLfTagResource):
             catalog_id=self.catalog_id,
             region=self.region,
             name=self.name,
+            _playbook_id=self._playbook_id,
         )
 
     @classmethod
@@ -122,6 +125,7 @@ class Database(NonLfTagResource):
             catalog_id=data["catalog_id"],
             region=data["region"],
             name=data["name"],
+            _playbook_id=data["_playbook_id"],
         )
 
     @property
@@ -141,7 +145,7 @@ class Database(NonLfTagResource):
 
     def batch_grant_remove_permission_arg_value(
         self,
-        dl_permission: 'DataLakePermission',
+        dl_permission: 'DataLakePermission' = None,
     ) -> dict:
         return dict(
             CatalogId=self.catalog_id,
@@ -156,9 +160,11 @@ class Table(NonLfTagResource):
         self,
         name: str,
         database: Database,
+        _playbook_id: Optional[str] = None,
     ):
         self.name = name
         self.database = database
+        self._playbook_id = _playbook_id
         self.validate()
 
         self.c: Dict[str, Column] = Box()
@@ -191,6 +197,7 @@ class Table(NonLfTagResource):
             res_type=self.res_type,
             name=self.name,
             database=self.database.serialize(),
+            _playbook_id=self._playbook_id,
         )
 
     @classmethod
@@ -198,6 +205,7 @@ class Table(NonLfTagResource):
         return cls(
             name=data["name"],
             database=Database.deserialize(data["database"]),
+            _playbook_id=data["_playbook_id"],
         )
 
     @property
@@ -218,7 +226,7 @@ class Table(NonLfTagResource):
 
     def batch_grant_remove_permission_arg_value(
         self,
-        dl_permission: 'DataLakePermission',
+        dl_permission: 'DataLakePermission' = None,
     ) -> dict:
         return dict(
             CatalogId=self.catalog_id,
@@ -234,9 +242,11 @@ class Column(NonLfTagResource):
         self,
         name: str,
         table: Table,
+        _playbook_id: Optional[str] = None,
     ):
         self.name = name
         self.table = table
+        self._playbook_id = _playbook_id
         self.validate()
 
     def validate(self):
@@ -267,6 +277,7 @@ class Column(NonLfTagResource):
             res_type=self.res_type,
             name=self.name,
             table=self.table.serialize(),
+            _playbook_id=self._playbook_id,
         )
 
     @classmethod
@@ -274,6 +285,7 @@ class Column(NonLfTagResource):
         return cls(
             name=data["name"],
             table=Table.deserialize(data["table"]),
+            _playbook_id=data["_playbook_id"],
         )
 
     @property
@@ -295,7 +307,7 @@ class Column(NonLfTagResource):
 
     def batch_grant_remove_permission_arg_value(
         self,
-        dl_permission: 'DataLakePermission',
+        dl_permission: 'DataLakePermission' = None,
     ) -> dict:
         return dict(
             CatalogId=self.catalog_id,
@@ -315,7 +327,9 @@ class DataLakeLocation(NonLfTagResource):
         self,
         catalog_id: str,
         resource_arn: str,
-        role_arn: str = None
+        role_arn: str = None,
+        pb: 'Playbook' = None,
+        _playbook_id: Optional[str] = None,
     ):
         self.catalog_id = catalog_id
         self.resource_arn = resource_arn
@@ -324,6 +338,13 @@ class DataLakeLocation(NonLfTagResource):
             self.use_service_link_role = True
         else:
             self.use_service_link_role = False
+        if pb is None:
+            self._playbook_id = _playbook_id
+        else:
+            pb.add_dl_location(self)
+            self._playbook_id = pb.playbook_id
+        self.pb = pb
+        self.validate()
 
     def validate(self):
         validate_attr_type(self, "catalog_id", self.catalog_id, str)
@@ -341,7 +362,7 @@ class DataLakeLocation(NonLfTagResource):
         return f"dl_loc_{self.attr_name}"
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(resource_arn={self.resource_arn!r}, role_arn={self.role_arn!r})"
+        return f"{self.__class__.__name__}(catalog_id={self.catalog_id!r},resource_arn={self.resource_arn!r}, role_arn={self.role_arn!r})"
 
     @property
     def id(self) -> str:
@@ -353,6 +374,7 @@ class DataLakeLocation(NonLfTagResource):
             catalog_id=self.catalog_id,
             resource_arn=self.resource_arn,
             role_arn=self.role_arn,
+            _playbook_id=self._playbook_id,
         )
 
     @classmethod
@@ -361,6 +383,7 @@ class DataLakeLocation(NonLfTagResource):
             catalog_id=data["catalog_id"],
             resource_arn=data["resource_arn"],
             role_arn=data["role_arn"],
+            _playbook_id=data["_playbook_id"],
         )
 
     @property
@@ -398,6 +421,8 @@ class DataCellsFilter(NonLfTagResource):
         include_columns: List[str] = None,
         exclude_columns: List[str] = None,
         row_filter_expression: str = None,
+        pb: 'Playbook' = None,
+        _playbook_id: Optional[str] = None,
     ):
         self.filter_name = filter_name
         self.catalog_id = catalog_id
@@ -407,6 +432,13 @@ class DataCellsFilter(NonLfTagResource):
         self.include_columns = include_columns
         self.exclude_columns = exclude_columns
         self.row_filter_expression = row_filter_expression
+        if pb is None:
+            self._playbook_id = None
+        else:
+            pb.add_data_filter(self)
+            self._playbook_id = pb.playbook_id
+        self.pb = pb
+        self.validate()
 
     def validate(self):
         validate_attr_type(self, "filter_name", self.filter_name, str)
@@ -421,14 +453,14 @@ class DataCellsFilter(NonLfTagResource):
                 raise ValueError
         elif self.column_level_access == self.ColumnLevelAccessEnum.include:
             if not isinstance(self.include_columns, list):
-                raise TypeError
+                raise ValueError
             if self.exclude_columns is not None:
                 raise ValueError
         elif self.column_level_access == self.ColumnLevelAccessEnum.exclude:
             if self.include_columns is not None:
                 raise ValueError
             if not isinstance(self.exclude_columns, list):
-                raise TypeError
+                raise ValueError
         else:
             raise ValueError
 
@@ -441,7 +473,7 @@ class DataCellsFilter(NonLfTagResource):
         return f"filter_{self.attr_name}"
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(filter_name={self.filter_name!r}, catalog_id={self.catalog_id!r}, database_name={self.database_name!r}, table_name={self.table_name!r}, column_level_access={self.column_level_access!r}, include_columns={self.include_columns!r}, exclude_columns={self.exclude_columns!r}, row_filter_expression={self.row_filter_expression!r}, )"
+        return f"{self.__class__.__name__}(filter_name={self.filter_name!r}, catalog_id={self.catalog_id!r}, database_name={self.database_name!r}, table_name={self.table_name!r}, column_level_access={self.column_level_access!r}, include_columns={self.include_columns!r}, exclude_columns={self.exclude_columns!r}, row_filter_expression={self.row_filter_expression!r})"
 
     @property
     def id(self) -> str:
@@ -458,6 +490,7 @@ class DataCellsFilter(NonLfTagResource):
             include_columns=self.include_columns,
             exclude_columns=self.exclude_columns,
             row_filter_expression=self.row_filter_expression,
+            _playbook_id=self._playbook_id,
         )
 
     @classmethod
@@ -471,6 +504,7 @@ class DataCellsFilter(NonLfTagResource):
             include_columns=data["include_columns"],
             exclude_columns=data["exclude_columns"],
             row_filter_expression=data["row_filter_expression"],
+            _playbook_id=data["_playbook_id"],
         )
 
     @property
@@ -498,14 +532,18 @@ class LfTag(Resource):
         key: str,
         value: str,
         pb: 'Playbook' = None,
+        _playbook_id: Optional[str] = None,
     ):
         self.catalog_id = catalog_id
         self.key = key
         self.value = value
         self.validate()
 
-        if pb is not None:  # pragma: no cover
+        if pb is None:
+            self._playbook_id = None
+        else:
             pb.add_tag(self)
+            self._playbook_id = pb.playbook_id
         self.pb = pb
 
     def validate(self):
@@ -523,7 +561,7 @@ class LfTag(Resource):
         return f"lf_tag_{self.key.lower()}_{self.value.lower()}"
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(key={self.key!r}, value={self.value!r})"
+        return f"{self.__class__.__name__}(catalog_id={self.catalog_id!r}, key={self.key!r}, value={self.value!r})"
 
     def serialize(self) -> dict:
         return dict(
@@ -531,11 +569,17 @@ class LfTag(Resource):
             catalog_id=self.catalog_id,
             key=self.key,
             value=self.value,
+            _playbook_id=self._playbook_id,
         )
 
     @classmethod
     def deserialize(cls, data: dict) -> 'LfTag':
-        return cls(catalog_id=data["catalog_id"], key=data["key"], value=data["value"])
+        return cls(
+            catalog_id=data["catalog_id"],
+            key=data["key"],
+            value=data["value"],
+            _playbook_id=data["_playbook_id"],
+        )
 
     @property
     def batch_grant_remove_permission_arg_name(self) -> str:
@@ -546,7 +590,7 @@ class LfTag(Resource):
         dl_permission: 'DataLakePermission',
     ) -> dict:
         return dict(
-            CatalogId=self.pb.account_id,
+            CatalogId=self.catalog_id,
             ResourceType=dl_permission.permission.resource_type,
             Expression=[
                 dict(

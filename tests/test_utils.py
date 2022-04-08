@@ -47,7 +47,7 @@ def test_grouper_list():
 
 
 def test_validate_iam_arn():
-    for principal in obj.principal_list:
+    for principal in obj.iam_list:
         validate_iam_arn(principal.arn)
 
     bad_arn_list = [

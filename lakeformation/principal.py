@@ -1,13 +1,16 @@
 # -*- coding: utf-8 -*-
 
-from typing import Union, Dict, Type
+from typing import Union, Dict, Type, Optional, TYPE_CHECKING
 
-from .abstract import HashableAbc, RenderableAbc, SerializableAbc
+from .abstract import HashableAbc, RenderableAbc, SerializableAbc, PlaybookManaged
 from .validator import validate_attr_type
 from .utils import validate_account_id, validate_iam_arn
 
+if TYPE_CHECKING:  # pragma: no cover
+    from .pb.playbook import Playbook
 
-class Principal(HashableAbc, RenderableAbc, SerializableAbc):
+
+class Principal(HashableAbc, RenderableAbc, SerializableAbc, PlaybookManaged):
     """
     Data Accessor Principal Model.
     """
@@ -26,9 +29,11 @@ class Iam(Principal):
     def __init__(
         self,
         arn: str,
+        _playbook_id: Optional[str] = None,
     ):
         self.arn = arn
         self.validate()
+        self._playbook_id = _playbook_id  # IAM object is never playbook managed
 
     def validate(self):
         validate_attr_type(self, "arn", self.arn, str)
@@ -49,7 +54,18 @@ class Iam(Principal):
         return f'{self.__class__.__name__}(arn={self.arn!r})'
 
     def serialize(self):
-        return dict(principal_type=self.principal_type, arn=self.arn)
+        return dict(
+            principal_type=self.principal_type,
+            arn=self.arn,
+            _playbook_id=self._playbook_id,
+        )
+
+    @property
+    def name(self) -> str:
+        """
+        Return the IAM role / user / group base name
+        """
+        return self.arn.split("/")[-1]
 
 
 class IamRole(Iam):
@@ -58,7 +74,10 @@ class IamRole(Iam):
 
     @classmethod
     def deserialize(cls, data: dict) -> 'IamRole':
-        return cls(arn=data["arn"])
+        return cls(
+            arn=data["arn"],
+            _playbook_id=data["_playbook_id"],
+        )
 
 
 class IamUser(Iam):
@@ -67,7 +86,10 @@ class IamUser(Iam):
 
     @classmethod
     def deserialize(cls, data: dict) -> 'IamUser':
-        return cls(arn=data["arn"])
+        return cls(
+            arn=data["arn"],
+            _playbook_id=data["_playbook_id"],
+        )
 
 
 class IamGroup(Iam):
@@ -76,22 +98,34 @@ class IamGroup(Iam):
 
     @classmethod
     def deserialize(cls, data: dict) -> 'IamGroup':
-        return cls(arn=data["arn"])
+        return cls(
+            arn=data["arn"],
+            _playbook_id=data["_playbook_id"],
+        )
 
 
 class SamlPrincipal(Principal):
     pass
 
 
-class ExternalAccountPrincipal(Principal):
-    principal_type = "ExternalAccountPrincipal"
+class ExternalAccount(Principal):
+    principal_type = "ExternalAccount"
 
     def __init__(
         self,
         account_id: str,
+        pb: 'Playbook' = None,
+        _playbook_id: Optional[str] = None
     ):
         self.account_id = account_id
+        self._playbook_id = _playbook_id
         self.validate()
+        if pb is None:
+            self._playbook_id = None
+        else:
+            pb.add_external_account(self)
+            self._playbook_id = pb.playbook_id
+        self.pb = pb
 
     def validate(self):
         validate_attr_type(self, "account_id", self.account_id, str)
@@ -109,16 +143,23 @@ class ExternalAccountPrincipal(Principal):
         return f'{self.__class__.__name__}(account_id={self.account_id!r})'
 
     def serialize(self):
-        return dict(principal_type=self.principal_type, account_id=self.account_id)
+        return dict(
+            principal_type=self.principal_type,
+            account_id=self.account_id,
+            _playbook_id=self._playbook_id,
+        )
 
     @classmethod
-    def deserialize(cls, data: dict) -> 'ExternalAccountPrincipal':
-        return cls(account_id=data["account_id"])
+    def deserialize(cls, data: dict) -> 'ExternalAccount':
+        return cls(
+            account_id=data["account_id"],
+            _playbook_id=data["_playbook_id"],
+        )
 
 
 _principal_type_mapper: Dict[str, Type['Principal']] = {
     "IamRole": IamRole,
     "IamUser": IamUser,
     "IamGroup": IamGroup,
-    "ExternalAccountPrincipal": ExternalAccountPrincipal,
+    "ExternalAccount": ExternalAccount,
 }

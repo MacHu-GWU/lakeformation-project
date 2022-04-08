@@ -5,7 +5,9 @@ from pathlib import Path
 from lakeformation.pb.playbook import (
     Playbook, DataLakePermission, LfTagAttachment,
 )
-from lakeformation.resource import LfTag
+from lakeformation.resource import (
+    DataLakeLocation, DataCellsFilter, LfTag,
+)
 from lakeformation.permission import PermissionEnum
 from lakeformation.tests import Objects, aws_account_id, aws_region
 
@@ -19,6 +21,47 @@ def setup_module(module):
 
 
 class TestPlaybook:
+    def test_resource_init_with_playbook(self):
+        pb = Playbook(_skip_validation=True)
+
+        tag = LfTag(catalog_id="111122223333", key="admin", value="y")
+        assert tag.playbook_managed is False
+
+        tag = LfTag(catalog_id="111122223333", key="admin", value="y", pb=pb)
+        assert tag.playbook_managed is True
+
+        loc = DataLakeLocation(catalog_id="111122223333", resource_arn="s3://my-bucket")
+        assert loc.playbook_managed is False
+
+        loc = DataLakeLocation(catalog_id="111122223333", resource_arn="s3://my-bucket", pb=pb)
+        assert loc.playbook_managed is True
+
+        ft = DataCellsFilter(
+            filter_name="my_filter",
+            catalog_id="111122223333",
+            database_name="db", table_name="tb",
+            column_level_access=DataCellsFilter.ColumnLevelAccessEnum.all,
+        )
+        assert ft.playbook_managed is False
+
+        ft = DataCellsFilter(
+            filter_name="my_filter",
+            catalog_id="111122223333",
+            database_name="db", table_name="tb",
+            column_level_access=DataCellsFilter.ColumnLevelAccessEnum.all,
+            pb=pb,
+        )
+        assert ft.playbook_managed is True
+
+        with pytest.raises(ValueError):
+            pb.add_tag(tag)
+
+        with pytest.raises(ValueError):
+            pb.add_dl_location(loc)
+
+        with pytest.raises(ValueError):
+            pb.add_data_filter(ft)
+
     def test_seder(self):
         obj = Objects()
 
@@ -34,8 +77,8 @@ class TestPlaybook:
         pb.grant(obj.iam_user_alice, obj.tag_admin_y,
                  [PermissionEnum.SuperDatabase.value, PermissionEnum.SuperTable.value])
 
-        pb.load_deployed_playbook() # test the logic when it not exists
-        pb.load_deployed_playbook() # test the logic when it exists
+        pb.load_deployed_playbook()  # test the logic when it not exists
+        pb.load_deployed_playbook()  # test the logic when it exists
 
         pb1 = Playbook.deserialize(pb.serialize())
         assert pb.account_id == pb1.account_id

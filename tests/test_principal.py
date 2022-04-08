@@ -4,7 +4,7 @@ import pytest
 from lakeformation.principal import (
     Principal,
     IamRole, IamUser, IamGroup,
-    ExternalAccountPrincipal,
+    ExternalAccount,
 )
 from lakeformation.tests import Objects
 
@@ -36,8 +36,8 @@ def test_render():
     assert repr(obj.iam_service_role_ecs) == f"IamRole(arn='{obj.iam_service_role_ecs.arn}')"
     assert repr(obj.iam_user_alice) == f"IamUser(arn='{obj.iam_user_alice.arn}')"
     assert repr(obj.iam_group_admin) == f"IamGroup(arn='{obj.iam_group_admin.arn}')"
-    assert repr(obj.acc1) == f"ExternalAccountPrincipal(account_id='{obj.acc1.account_id}')"
-    assert repr(obj.acc2) == f"ExternalAccountPrincipal(account_id='{obj.acc2.account_id}')"
+    assert repr(obj.acc1) == f"ExternalAccount(account_id='{obj.acc1.account_id}')"
+    assert repr(obj.acc2) == f"ExternalAccount(account_id='{obj.acc2.account_id}')"
 
 
 def test_seder():
@@ -45,8 +45,8 @@ def test_seder():
     assert IamRole.deserialize(obj.iam_service_role_ecs.serialize()) == obj.iam_service_role_ecs
     assert IamUser.deserialize(obj.iam_user_alice.serialize()) == obj.iam_user_alice
     assert IamGroup.deserialize(obj.iam_group_admin.serialize()) == obj.iam_group_admin
-    assert ExternalAccountPrincipal.deserialize(obj.acc1.serialize()) == obj.acc1
-    assert ExternalAccountPrincipal.deserialize(obj.acc2.serialize()) == obj.acc2
+    assert ExternalAccount.deserialize(obj.acc1.serialize()) == obj.acc1
+    assert ExternalAccount.deserialize(obj.acc2.serialize()) == obj.acc2
 
     for p in obj.principal_list:
         assert Principal.deserialize(p.serialize()) == p
